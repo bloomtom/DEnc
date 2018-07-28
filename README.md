@@ -1,7 +1,7 @@
 # DEnc
 >Easy dotnet [DASH](https://en.wikipedia.org/wiki/Dynamic_Adaptive_Streaming_over_HTTP).
 
-This library acts as a simplification interface wrapping around ffmpeg and mp4box. Simply pass in a file and the desired qualities, and the complicated commands and output processing is handled for you. The result is a set of media files an an mpd file
+This library acts as a simplification interface wrapping around ffmpeg and mp4box. Simply pass in a file and the desired qualities, and the complicated commands and output processing is handled for you. The result is a set of media files and an mpd file.
 
 
 ## Nuget Packages
