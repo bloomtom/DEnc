@@ -33,6 +33,10 @@ namespace DEnc
         /// <param name="framerate">The output framerate.</param>
         /// <param name="keyInterval">The output key interval. For best results should be a multiple of framerate.</param>
         /// <param name="qualities">A collection of qualities to encode to. Entries in the collection must have a distinct bitrate, otherwise behavior is undefined.</param>
+        /// <param name="inputAudioCodec">The input file audio codec.</param>
+        /// <param name="inputVideoCodec">The input file video codec</param>
+        /// <param name="defaultBitrate">The bitrate to use for the copy quality. Typically the input file bitrate.</param>
+        /// <param name="enableStreamCopying">Set true to enable -vcodec copy for the copy quality.</param>
         internal static CommandBuildResult BuildFfmpegCommand(
             string ffPath,
             string inPath,
@@ -43,7 +47,8 @@ namespace DEnc
             IEnumerable<IQuality> qualities,
             string inputAudioCodec,
             string inputVideoCodec,
-            int defaultBitrate)
+            int defaultBitrate,
+            bool enableStreamCopying)
         {
             var getSize = new Func<IQuality, string>(x => { return (x.Width == 0 || x.Height == 0) ? "" : $"-s {x.Width}x{x.Height}"; });
             var getBitrate = new Func<int, string>(x => { return (x == 0) ? "" : $"-b:v {x}k"; });
@@ -72,7 +77,7 @@ namespace DEnc
                     getBitrate(x.Bitrate == 0 ? defaultBitrate : x.Bitrate),
                     getPreset(x),
                     getFramerate(framerate),
-                    getVideoCodec(inputVideoCodec, x.Bitrate == 0, keyInterval),
+                    getVideoCodec(inputVideoCodec, x.Bitrate == 0 && enableStreamCopying, keyInterval),
                     getAudioCodec(inputAudioCodec),
                     '"' + getFilename(outDirectory, outFilename, x.Bitrate) + '"'
                 });

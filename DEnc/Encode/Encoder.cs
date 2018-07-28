@@ -16,6 +16,7 @@ namespace DEnc
         public string WorkingDirectory { get; private set; }
 
         public bool DisableQualityCrushing { get; set; } = false;
+        public bool EnableStreamCopying { get; set; } = false;
 
         private const double bitrateCrushTolerance = 0.95;
 
@@ -105,7 +106,8 @@ namespace DEnc
                 qualities: qualities.OrderByDescending(x => x.Bitrate),
                 inputAudioCodec: inputStats.AudioFormat,
                 inputVideoCodec: inputStats.VideoFormat,
-                defaultBitrate: inputBitrate);
+                defaultBitrate: inputBitrate,
+                enableStreamCopying: EnableStreamCopying);
 
             var mp4boxCommand = CommandBuilder.BuildMp4boxCommand(
                 mp4boxPath: BoxPath,
