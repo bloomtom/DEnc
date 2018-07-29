@@ -90,7 +90,7 @@ namespace DEnc
         /// <summary>
         /// Builds the arguments for the CLI version of Mp4Box.
         /// </summary>
-        /// <param name="mp4boxPath">The path to mp4box. Just 'mp4box' if the program is in your path.</param>
+        /// <param name="mp4boxPath">The path to MP4Box. Just 'MP4Box' if the program is in your path.</param>
         /// <param name="inFiles">A collection of full paths to input files to encode from.</param>
         /// <param name="outFilePath">The full path to write the mpd file to.</param>
         /// <param name="keyInterval">The key interval in milliseconds. This can be derived from: (keyframeInterval / framerate) * 1000</param>

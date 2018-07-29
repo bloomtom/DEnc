@@ -24,15 +24,15 @@ namespace DEnc
         private readonly Action<string> stderrLog;
 
         /// <summary>
-        /// Creates a new encoder with the given paths for ffmpeg and mp4box, as well as the working directory.
-        /// The given pointers to ffmpeg and mp4box are tested by executing them with no parameters upon construction. An exception is thrown if the execution fails.
+        /// Creates a new encoder with the given paths for ffmpeg and MP4Box, as well as the working directory.
+        /// The given pointers to ffmpeg and MP4Box are tested by executing them with no parameters upon construction. An exception is thrown if the execution fails.
         /// </summary>
         /// <param name="ffmpegPath">A full path or environmental variable for ffmpeg.</param>
-        /// <param name="boxPath">A full path or environmental variable for mp4box.</param>
-        ///<param name="stdoutLog">A callback which reflects stdout of ffmpeg/mp4box. May be left null.</param>
-        ///<param name="stderrLog">A callback used for logging, and for the stderr of ffmpeg/mp4box. May be left null.</param>
+        /// <param name="boxPath">A full path or environmental variable for MP4Box.</param>
+        ///<param name="stdoutLog">A callback which reflects stdout of ffmpeg/MP4Box. May be left null.</param>
+        ///<param name="stderrLog">A callback used for logging, and for the stderr of ffmpeg/MP4Box. May be left null.</param>
         /// <param name="workingDirectory">A directory to generate output files in. If null, a temp path is used.</param>
-        public Encoder(string ffmpegPath = "ffmpeg", string ffprobePath = "ffprobe", string boxPath = "mp4box", Action<string> stdoutLog = null, Action<string> stderrLog = null, string workingDirectory = null)
+        public Encoder(string ffmpegPath = "ffmpeg", string ffprobePath = "ffprobe", string boxPath = "MP4Box", Action<string> stdoutLog = null, Action<string> stderrLog = null, string workingDirectory = null)
         {
             FFmpegPath = ffmpegPath;
             FFprobePath = ffprobePath;
@@ -130,7 +130,7 @@ namespace DEnc
 
             // Generate DASH files.
             ExecutionResult mpdResult;
-            stderrLog.Invoke($"Running mp4box with arguments: {mp4boxCommand.CommandArguments}");
+            stderrLog.Invoke($"Running MP4Box with arguments: {mp4boxCommand.CommandArguments}");
             mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.CommandArguments, stdoutLog, stderrLog);
 
             // Cleanup intermediates.
@@ -142,10 +142,10 @@ namespace DEnc
                 MPD.LoadFromFile(output, out MPD mpd, out Exception ex);
                 var result = new DashEncodeResult(mpd, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), output);
 
-                // Detect error in mp4box process and cleanup, then return null.
+                // Detect error in MP4Box process and cleanup, then return null.
                 if (mpdResult.ExitCode != 0)
                 {
-                    stderrLog.Invoke($"ERROR: mp4box returned code {ffResult.ExitCode}.");
+                    stderrLog.Invoke($"ERROR: MP4Box returned code {ffResult.ExitCode}.");
                     CleanOutputFiles(result.MediaFiles.Select(x => Path.Combine(outDirectory, x)));
                     CleanOutputFiles(mpdResult.Output);
                     return null;
@@ -155,7 +155,7 @@ namespace DEnc
                 return result;
             }
 
-            stderrLog.Invoke($"ERROR: mp4box did not produce the expected mpd file at path {output}.");
+            stderrLog.Invoke($"ERROR: MP4Box did not produce the expected mpd file at path {output}.");
             return null;
         }
 
