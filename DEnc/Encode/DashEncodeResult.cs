@@ -15,7 +15,7 @@ namespace DEnc
         /// <summary>
         /// Returns the list of media filenames from the DashFileContent. This operation scans the MPD object and isn't cached.
         /// </summary>
-        public IEnumerable<string> MediaFiles => DashFileContent?.Period.SelectMany(x => x.AdaptationSet.SelectMany(y => y.Representation.SelectMany(z => z.BaseURL.Select(v => v.Value))));
+        public IEnumerable<string> MediaFiles => DashFileContent?.Period.SelectMany(x => x.AdaptationSet.SelectMany(y => y.Representation.SelectMany(z => z.BaseURL)));
 
         public DashEncodeResult(MPD file, TimeSpan duration, string path)
         {

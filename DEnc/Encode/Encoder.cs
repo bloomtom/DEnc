@@ -150,31 +150,32 @@ namespace DEnc
             if (File.Exists(output))
             {
                 MPD.LoadFromFile(output, out MPD mpd, out Exception ex);
+                mpd.ProgramInformation = null;
 
                 // Add adaptation sets for subtitles.
+                int.TryParse(mpd.Period.Max(x => x.AdaptationSet.Max(y => y.Representation.Max(z => z.Id))), out int subId);
+                subId++;
                 foreach (var sub in subtitles)
                 {
-                    mpd.Period[0].AdaptationSet.Add(new AdaptationSetType()
+                    mpd.Period[0].AdaptationSet.Add(new AdaptationSet()
                     {
-                        mimeType = "text/vtt",
-                        lang = sub.Name,
-                        contentType = "text",
-                        Representation = new List<RepresentationType>()
+                        MimeType = "text/vtt",
+                        Lang = sub.Name,
+                        ContentType = "text",
+                        Representation = new List<Representation>()
                         {
-                            new RepresentationType()
+                            new Representation()
                             {
-                                id = sub.Origin.ToString(),
-                                bandwidth = 256,
-                                BaseURL = new List<BaseURLType>()
+                                Id = subId.ToString(),
+                                Bandwidth = 256,
+                                BaseURL = new List<string>()
                                 {
-                                    new BaseURLType()
-                                    {
-                                        Value = Path.GetFileName(sub.Path)
-                                    }
+                                    Path.GetFileName(sub.Path)
                                 }
                             }
                         }
                     });
+                    subId++;
                 }
                 mpd.SaveToFile(output);
 
