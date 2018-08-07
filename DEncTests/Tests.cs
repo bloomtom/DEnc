@@ -35,7 +35,7 @@ namespace DEncTests
                 Assert.NotNull(s.DashFilePath);
                 Assert.NotNull(s.DashFileContent);
                 Assert.NotNull(s.MediaFiles);
-                Assert.Equal(3, s.MediaFiles.Count());
+                Assert.Equal(4, s.MediaFiles.Count());
             }
             finally
             {
