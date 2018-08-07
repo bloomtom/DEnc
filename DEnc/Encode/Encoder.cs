@@ -97,49 +97,87 @@ namespace DEnc
 
             // Build task definitions.
             var ffmpegCommand = CommandBuilder.BuildFfmpegCommand(
-                ffPath: FFmpegPath,
                 inPath: inFile,
                 outDirectory: WorkingDirectory,
                 outFilename: outFilename,
                 framerate: framerate,
                 keyInterval: keyframeInterval,
                 qualities: qualities.OrderByDescending(x => x.Bitrate),
-                inputAudioCodec: inputStats.AudioFormat,
-                inputVideoCodec: inputStats.VideoFormat,
+                metadata: inputStats,
                 defaultBitrate: inputBitrate,
                 enableStreamCopying: EnableStreamCopying);
 
-            var mp4boxCommand = CommandBuilder.BuildMp4boxCommand(
-                mp4boxPath: BoxPath,
-                inFiles: ffmpegCommand.OutputFiles,
-                outFilePath: Path.Combine(outDirectory, outFilename) + ".mpd",
-                keyInterval: (keyframeInterval / framerate) * 1000);
-
             // Generate intermediates
             ExecutionResult ffResult;
-            stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.CommandArguments}");
-            ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.CommandArguments, stdoutLog, stderrLog);
+            stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.RenderedCommand}");
+            ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, stderrLog);
 
             // Detect error in ffmpeg process and cleanup, then return null.
             if (ffResult.ExitCode != 0)
             {
                 stderrLog.Invoke($"ERROR: ffmpeg returned code {ffResult.ExitCode}.");
-                CleanOutputFiles(ffmpegCommand.OutputFiles);
+                CleanOutputFiles(ffmpegCommand.CommandPieces.Select(x => x.Path));
                 return null;
             }
 
+            var audioVideoFiles = ffmpegCommand.CommandPieces.Where(x => x.Type == StreamType.Video || x.Type == StreamType.Audio);
+
+            var mp4boxCommand = CommandBuilder.BuildMp4boxMpdCommand(
+                inFiles: audioVideoFiles.Select(x => x.Path),
+                outFilePath: Path.Combine(outDirectory, outFilename) + ".mpd",
+                keyInterval: (keyframeInterval / framerate) * 1000);
+
             // Generate DASH files.
             ExecutionResult mpdResult;
-            stderrLog.Invoke($"Running MP4Box with arguments: {mp4boxCommand.CommandArguments}");
-            mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.CommandArguments, stdoutLog, stderrLog);
+            stderrLog.Invoke($"Running MP4Box with arguments: {mp4boxCommand.RenderedCommand}");
+            mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog);
 
             // Cleanup intermediates.
-            CleanOutputFiles(ffmpegCommand.OutputFiles);
+            CleanOutputFiles(audioVideoFiles.Select(x => x.Path));
 
-            string output = mp4boxCommand.OutputFiles.FirstOrDefault();
+            // Move subtitles
+            List<StreamFile> subtitles = new List<StreamFile>();
+            foreach (var subFile in ffmpegCommand.CommandPieces.Where(x => x.Type == StreamType.Subtitle))
+            {
+                string oldPath = subFile.Path;
+                subFile.Path = Path.Combine(outDirectory, Path.GetFileName(subFile.Path));
+                subtitles.Add(subFile);
+                if (File.Exists(subFile.Path)) { File.Delete(subFile.Path); }
+                File.Move(oldPath, subFile.Path);
+            }
+
+            string output = mp4boxCommand.CommandPieces.FirstOrDefault().Path;
             if (File.Exists(output))
             {
                 MPD.LoadFromFile(output, out MPD mpd, out Exception ex);
+
+                // Add adaptation sets for subtitles.
+                foreach (var sub in subtitles)
+                {
+                    mpd.Period[0].AdaptationSet.Add(new AdaptationSetType()
+                    {
+                        mimeType = "text/vtt",
+                        lang = sub.Name,
+                        contentType = "text",
+                        Representation = new List<RepresentationType>()
+                        {
+                            new RepresentationType()
+                            {
+                                id = sub.Origin.ToString(),
+                                bandwidth = 256,
+                                BaseURL = new List<BaseURLType>()
+                                {
+                                    new BaseURLType()
+                                    {
+                                        Value = Path.GetFileName(sub.Path)
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                mpd.SaveToFile(output);
+
                 var result = new DashEncodeResult(mpd, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), output);
 
                 // Detect error in MP4Box process and cleanup, then return null.
@@ -195,25 +233,33 @@ namespace DEnc
 
             if (FFprobeData.Deserialize(xmlData, out FFprobeData t))
             {
-                var audioStreams = t.streams.Where(x => x.codec_type == "audio");
-                var videoStreams = t.streams.Where(x => x.codec_type == "video");
+                List<MediaStream> audioStreams = new List<MediaStream>();
+                List<MediaStream> videoStreams = new List<MediaStream>();
+                List<MediaStream> subtitleStreams = new List<MediaStream>();
+                foreach (var s in t.streams)
+                {
+                    switch (s.codec_type)
+                    {
+                        case "audio":
+                            audioStreams.Add(s);
+                            break;
+                        case "video":
+                            videoStreams.Add(s);
+                            break;
+                        case "subtitle":
+                            subtitleStreams.Add(s);
+                            break;
+                        default:
+                            break;
+                    }
+                }
 
-                var supportedCodecs = CommandBuilder.GetSupportedCodecs();
-
-                var firstVideoStream = videoStreams.FirstOrDefault(x => supportedCodecs.Contains(x.codec_name));
-                var firstAudioStream = audioStreams.FirstOrDefault(x => supportedCodecs.Contains(x.codec_name));
+                var firstVideoStream = videoStreams.FirstOrDefault(x => CommandBuilder.SupportedCodecs.ContainsKey(x.codec_name));
+                var firstAudioStream = audioStreams.FirstOrDefault(x => CommandBuilder.SupportedCodecs.ContainsKey(x.codec_name));
 
                 if (!decimal.TryParse(firstVideoStream?.r_frame_rate, out decimal framerate)) { framerate = 24; }
 
-                var meta = new MediaMetadata()
-                {
-                    VideoFormat = firstVideoStream?.codec_name ?? videoStreams.First()?.codec_name,
-                    AudioFormat = firstAudioStream?.codec_name ?? audioStreams.First()?.codec_name,
-                    AudioStreams = audioStreams,
-                    VideoStreams = videoStreams,
-                    Bitrate = t.format.bit_rate,
-                    Framerate = framerate
-                };
+                var meta = new MediaMetadata(videoStreams, audioStreams, subtitleStreams, t.format.bit_rate, framerate);
                 return meta;
             }
 

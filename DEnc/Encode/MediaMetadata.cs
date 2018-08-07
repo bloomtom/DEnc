@@ -7,11 +7,24 @@ namespace DEnc
 {
     internal class MediaMetadata
     {
-        public string AudioFormat { get; set; }
-        public string VideoFormat { get; set; }
-        public IEnumerable<MediaStream> AudioStreams { get; set; }
-        public IEnumerable<MediaStream> VideoStreams { get; set; }
-        public long Bitrate { get; set; }
-        public decimal Framerate { get; set; }
+        public IEnumerable<MediaStream> AudioStreams { get; private set; }
+        public IEnumerable<MediaStream> VideoStreams { get; private set; }
+        public IEnumerable<MediaStream> SubtitleStreams { get; private set; }
+        public long Bitrate { get; private set; }
+        public decimal Framerate { get; private set; }
+
+        internal MediaMetadata(
+            IEnumerable<MediaStream> videoStreams,
+            IEnumerable<MediaStream> audioStreams,
+            IEnumerable<MediaStream> subtitleStreams,
+            long bitrate,
+            decimal framerate)
+        {
+            VideoStreams = videoStreams;
+            AudioStreams = audioStreams;
+            SubtitleStreams = subtitleStreams;
+            Bitrate = bitrate;
+            Framerate = framerate;
+        }
     }
 }

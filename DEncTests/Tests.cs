@@ -26,9 +26,9 @@ namespace DEncTests
                     keyframeInterval: 90,
                     qualities: new List<Quality>
                     {
-                        new Quality(1920, 1080, 4000, "slow"),
-                        new Quality(1280, 720, 1280, "slow"),
-                        new Quality(640, 480, 768, "slow"),
+                        new Quality(1920, 1080, 4000, "medium"),
+                        new Quality(1280, 720, 1280, "medium"),
+                        new Quality(640, 480, 768, "medium"),
                     },
                     outDirectory: runPath);
 
@@ -36,6 +36,55 @@ namespace DEncTests
                 Assert.NotNull(s.DashFileContent);
                 Assert.NotNull(s.MediaFiles);
                 Assert.Equal(3, s.MediaFiles.Count());
+            }
+            finally
+            {
+                if (s?.DashFilePath != null)
+                {
+                    string basePath = Path.GetDirectoryName(s.DashFilePath);
+                    if (File.Exists(s.DashFilePath))
+                    {
+                        File.Delete(s.DashFilePath);
+                    }
+
+                    foreach (var file in s.MediaFiles)
+                    {
+                        try
+                        {
+                            File.Delete(Path.Combine(basePath, file));
+                        }
+                        catch (Exception) { }
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public void TestMultipleTrack()
+        {
+            DashEncodeResult s = null;
+
+            try
+            {
+                string runPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\");
+
+                Encoder c = new Encoder();
+                s = c.GenerateDash(
+                    inFile: Path.Combine(runPath, "test5.mkv"),
+                    outFilename: "outputmulti",
+                    framerate: 30,
+                    keyframeInterval: 90,
+                    qualities: new List<Quality>
+                    {
+                        new Quality(1280, 720, 900, "veryfast"),
+                        new Quality(640, 480, 768, "veryfast"),
+                    },
+                    outDirectory: runPath);
+
+                Assert.NotNull(s.DashFilePath);
+                Assert.NotNull(s.DashFileContent);
+                Assert.NotNull(s.MediaFiles);
+                Assert.Equal(12, s.MediaFiles.Count());
             }
             finally
             {
@@ -71,7 +120,7 @@ namespace DEncTests
                 {
                     c.GenerateDash(
                         inFile: testfile,
-                        outFilename: "output",
+                        outFilename: "outputdup",
                         framerate: 30,
                         keyframeInterval: 90,
                         qualities: new List<Quality>
