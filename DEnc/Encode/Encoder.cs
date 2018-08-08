@@ -142,8 +142,11 @@ namespace DEnc
                 string oldPath = subFile.Path;
                 subFile.Path = Path.Combine(outDirectory, Path.GetFileName(subFile.Path));
                 subtitles.Add(subFile);
-                if (File.Exists(subFile.Path)) { File.Delete(subFile.Path); }
-                File.Move(oldPath, subFile.Path);
+                if (oldPath != subFile.Path)
+                {
+                    if (File.Exists(subFile.Path)) { File.Delete(subFile.Path); }
+                    File.Move(oldPath, subFile.Path);
+                }
             }
 
             string output = mp4boxCommand.CommandPieces.FirstOrDefault().Path;
