@@ -26,9 +26,9 @@ namespace DEncTests
                     keyframeInterval: 90,
                     qualities: new List<Quality>
                     {
-                        new Quality(1920, 1080, 4000, "medium"),
-                        new Quality(1280, 720, 1280, "medium"),
-                        new Quality(640, 480, 768, "medium"),
+                        new Quality(1920, 1080, 4000, "fast"),
+                        new Quality(1280, 720, 1280, "fast"),
+                        new Quality(640, 480, 768, "fast"),
                     },
                     outDirectory: runPath);
 
@@ -76,8 +76,8 @@ namespace DEncTests
                     keyframeInterval: 90,
                     qualities: new List<Quality>
                     {
-                        new Quality(1280, 720, 900, "veryfast"),
-                        new Quality(640, 480, 768, "veryfast"),
+                        new Quality(1280, 720, 900, "ultrafast"),
+                        new Quality(640, 480, 768, "ultrafast"),
                     },
                     outDirectory: runPath);
 

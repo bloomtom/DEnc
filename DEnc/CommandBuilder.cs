@@ -102,6 +102,8 @@ namespace DEnc
                         Argument = string.Join(" ", new string[]
                         {
                             $"-map 0:{stream.index}",
+                            "-sn",
+                            "-map_metadata -1",
                             getSize(quality),
                             getBitrate(quality.Bitrate == 0 ? defaultBitrate : quality.Bitrate),
                             getPreset(quality),
@@ -136,6 +138,8 @@ namespace DEnc
                     Argument = string.Join(" ", new string[]
                     {
                             $"-map 0:{stream.index}",
+                             "-sn",
+                             "-map_metadata -1",
                             codec,
                             '"' + path + '"'
                     })

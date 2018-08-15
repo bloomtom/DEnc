@@ -149,40 +149,12 @@ namespace DEnc
                 }
             }
 
-            string output = mp4boxCommand.CommandPieces.FirstOrDefault().Path;
-            if (File.Exists(output))
+            string mpdFilepath = mp4boxCommand.CommandPieces.FirstOrDefault().Path;
+            if (File.Exists(mpdFilepath))
             {
-                MPD.LoadFromFile(output, out MPD mpd, out Exception ex);
-                mpd.ProgramInformation = null;
+                MPD mpd = PostProcessMpdFile(mpdFilepath, subtitles);
 
-                // Add adaptation sets for subtitles.
-                int.TryParse(mpd.Period.Max(x => x.AdaptationSet.Max(y => y.Representation.Max(z => z.Id))), out int subId);
-                subId++;
-                foreach (var sub in subtitles)
-                {
-                    mpd.Period[0].AdaptationSet.Add(new AdaptationSet()
-                    {
-                        MimeType = "text/vtt",
-                        Lang = sub.Name,
-                        ContentType = "text",
-                        Representation = new List<Representation>()
-                        {
-                            new Representation()
-                            {
-                                Id = subId.ToString(),
-                                Bandwidth = 256,
-                                BaseURL = new List<string>()
-                                {
-                                    Path.GetFileName(sub.Path)
-                                }
-                            }
-                        }
-                    });
-                    subId++;
-                }
-                mpd.SaveToFile(output);
-
-                var result = new DashEncodeResult(mpd, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), output);
+                var result = new DashEncodeResult(mpd, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), mpdFilepath);
 
                 // Detect error in MP4Box process and cleanup, then return null.
                 if (mpdResult.ExitCode != 0)
@@ -197,8 +169,52 @@ namespace DEnc
                 return result;
             }
 
-            stderrLog.Invoke($"ERROR: MP4Box did not produce the expected mpd file at path {output}.");
+            stderrLog.Invoke($"ERROR: MP4Box did not produce the expected mpd file at path {mpdFilepath}.");
             return null;
+        }
+
+        /// <summary>
+        /// Performs on-disk post processing of the generated MPD file.
+        /// Subtitles are added, useless tags removed, etc.
+        /// </summary>
+        private static MPD PostProcessMpdFile(string filepath, List<StreamFile> subtitles)
+        {
+            MPD.LoadFromFile(filepath, out MPD mpd, out Exception ex);
+            mpd.ProgramInformation = null;
+
+            // Get the highest used representation ID so we can increment it for new IDs.
+            int.TryParse(mpd.Period.Max(x => x.AdaptationSet.Max(y => y.Representation.Max(z => z.Id))), out int representationId);
+            representationId++;
+
+            foreach (var period in mpd.Period)
+            {
+                // Add subtitles to this period.
+                foreach (var sub in subtitles)
+                {
+                    period.AdaptationSet.Add(new AdaptationSet()
+                    {
+                        MimeType = "text/vtt",
+                        Lang = sub.Name,
+                        ContentType = "text",
+                        Representation = new List<Representation>()
+                        {
+                            new Representation()
+                            {
+                                Id = representationId.ToString(),
+                                Bandwidth = 256,
+                                BaseURL = new List<string>()
+                                {
+                                    Path.GetFileName(sub.Path)
+                                }
+                            }
+                        }
+                    });
+                    representationId++;
+                }
+            }
+
+            mpd.SaveToFile(filepath);
+            return mpd;
         }
 
         /// <summary>
