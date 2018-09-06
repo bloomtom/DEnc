@@ -12,19 +12,22 @@ namespace DEnc
         public IEnumerable<MediaStream> SubtitleStreams { get; private set; }
         public long Bitrate { get; private set; }
         public decimal Framerate { get; private set; }
+        public float Duration { get; private set; }
 
         internal MediaMetadata(
             IEnumerable<MediaStream> videoStreams,
             IEnumerable<MediaStream> audioStreams,
             IEnumerable<MediaStream> subtitleStreams,
             long bitrate,
-            decimal framerate)
+            decimal framerate,
+            float duration)
         {
             VideoStreams = videoStreams;
             AudioStreams = audioStreams;
             SubtitleStreams = subtitleStreams;
             Bitrate = bitrate;
             Framerate = framerate;
+            Duration = duration;
         }
     }
 }

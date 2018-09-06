@@ -18,6 +18,7 @@ namespace DEncTests
             {
                 string runPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\");
 
+                float progress = 0;
                 Encoder c = new Encoder();
                 s = c.GenerateDash(
                     inFile: Path.Combine(runPath, "testfile.ogg"),
@@ -30,12 +31,14 @@ namespace DEncTests
                         new Quality(1280, 720, 1280, "fast"),
                         new Quality(640, 480, 768, "fast"),
                     },
-                    outDirectory: runPath);
+                    outDirectory: runPath,
+                    progress: new Action<float>(x => { progress = x; }));
 
                 Assert.NotNull(s.DashFilePath);
                 Assert.NotNull(s.DashFileContent);
                 Assert.NotNull(s.MediaFiles);
                 Assert.Equal(4, s.MediaFiles.Count());
+                Assert.Equal(1, progress);
             }
             finally
             {

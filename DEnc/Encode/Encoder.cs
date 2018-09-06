@@ -56,8 +56,9 @@ namespace DEnc
         /// <param name="keyframeInterval">The interval for keyframes. Typically set for 3-10x the framerate depending on keydrop tolerance.</param>
         /// <param name="qualities">Parameters to pass to ffmpeg when performing the preparation encoding. Bitrates must be distinct, an exception will be thrown if they are not.</param>
         /// <param name="outDirectory">The directory to place output files and intermediary files in.</param>
+        /// <param name="progress">A callback for progress events.</param>
         /// <returns>An object containing a representation of the generated MPD file, it's path, and the associated filenames, or null if no file generated.</returns>
-        public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval, IEnumerable<IQuality> qualities, string outDirectory = null)
+        public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval, IEnumerable<IQuality> qualities, string outDirectory = null, Action<float> progress = null)
         {
             outDirectory = outDirectory ?? WorkingDirectory;
 
@@ -92,6 +93,23 @@ namespace DEnc
                 qualities = CrushQualities(qualities, inputBitrate);
             }
 
+            var stdErrShim = stderrLog;
+            if (progress != null)
+            {
+                stdErrShim = new Action<string>(x =>
+                {
+                    stderrLog(x);
+                    if (x != null)
+                    {
+                        var match = Encode.Regexes.ParseProgress.Match(x);
+                        if (match.Success && TimeSpan.TryParse(match.Value, out TimeSpan p))
+                        {
+                            progress.Invoke(Math.Min(1, (float)(p.TotalMilliseconds / 1000) / inputStats.Duration));
+                        }
+                    }
+                });
+            }
+
             framerate = framerate <= 0 ? (int)Math.Round(inputStats.Framerate) : framerate;
             keyframeInterval = keyframeInterval <= 0 ? framerate * 3 : keyframeInterval;
 
@@ -110,7 +128,7 @@ namespace DEnc
             // Generate intermediates
             ExecutionResult ffResult;
             stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.RenderedCommand}");
-            ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, stderrLog);
+            ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, stdErrShim);
 
             // Detect error in ffmpeg process and cleanup, then return null.
             if (ffResult.ExitCode != 0)
@@ -279,7 +297,9 @@ namespace DEnc
 
                 if (!decimal.TryParse(firstVideoStream?.r_frame_rate, out decimal framerate)) { framerate = 24; }
 
-                var meta = new MediaMetadata(videoStreams, audioStreams, subtitleStreams, t.format.bit_rate, framerate);
+                float duration = t.format != null ? t.format.duration : 0;
+
+                var meta = new MediaMetadata(videoStreams, audioStreams, subtitleStreams, t.format.bit_rate, framerate, duration);
                 return meta;
             }
 
