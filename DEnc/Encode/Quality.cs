@@ -39,6 +39,10 @@ namespace DEnc
         /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
         /// </summary>
         string Level { get; set; }
+        /// <summary>
+        /// ffmpeg pixel format or pix_fmt.
+        /// </summary>
+        string PixelFormat { get; set; }
     }
 
     /// <summary>
@@ -70,6 +74,10 @@ namespace DEnc
         /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
         /// </summary>
         public string Level { get; set; } = "4.0";
+        /// <summary>
+        /// ffmpeg pixel format or pix_fmt.
+        /// </summary>
+        public string PixelFormat { get; set; } = "yuv420p";
 
         public Quality()
         {

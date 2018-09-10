@@ -76,6 +76,7 @@ namespace DEnc
             var getPreset = new Func<string, string>(x => { return (string.IsNullOrEmpty(x)) ? "" : $"-preset {x}"; });
             var getProfile = new Func<string, string>(x => { return (string.IsNullOrEmpty(x)) ? "" : $"-profile:v {x}"; });
             var getProfileLevel = new Func<string, string>(x => { return (string.IsNullOrEmpty(x)) ? "" : $"-level {x}"; });
+            var getPixelFormat = new Func<string, string>(x => { return (string.IsNullOrEmpty(x)) ? "" : $"-pix_fmt {x}"; });
             var getFramerate = new Func<int, string>(x => { return (x == 0) ? "" : $"-r {x}"; });
             var getFilename = new Func<string, string, int, string>((path, filename, bitrate) => { return Path.Combine(path, $"{filename}_{(bitrate == 0 ? "original" : bitrate.ToString())}.mp4"); });
 
@@ -111,6 +112,7 @@ namespace DEnc
                             getPreset(quality.Preset),
                             getProfile(quality.Profile),
                             getProfileLevel(quality.Level),
+                            getPixelFormat(quality.PixelFormat),
                             getFramerate(framerate),
                             getVideoCodec(stream.codec_name, quality.Bitrate == 0 && enableStreamCopying, keyframeInterval),
                             '"' + path + '"'
