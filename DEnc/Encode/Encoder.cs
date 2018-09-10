@@ -52,14 +52,17 @@ namespace DEnc
         /// </summary>
         /// <param name="inFile">The video file to convert.</param>
         /// <param name="outFilename">The base filename to use for the output files. Files will be overwritten if they exist.</param>
-        /// <param name="framerate">The global framerate to use for the output encode.</param>
-        /// <param name="keyframeInterval">The interval for keyframes. Typically set for 3-10x the framerate depending on keydrop tolerance.</param>
+        /// <param name="framerate">Output video stream framerate. Pass zero to make this automatic based on the input file.</param>
+        /// <param name="keyframeInterval">Output video keyframe interval. Pass zero to make this automatically 3x the framerate.</param>
         /// <param name="qualities">Parameters to pass to ffmpeg when performing the preparation encoding. Bitrates must be distinct, an exception will be thrown if they are not.</param>
+        /// <param name="options">Options for the ffmpeg encode.</param>
         /// <param name="outDirectory">The directory to place output files and intermediary files in.</param>
         /// <param name="progress">A callback for progress events.</param>
         /// <returns>An object containing a representation of the generated MPD file, it's path, and the associated filenames, or null if no file generated.</returns>
-        public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval, IEnumerable<IQuality> qualities, string outDirectory = null, Action<float> progress = null)
+        public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
+            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, Action<float> progress = null)
         {
+            options = options ?? new H264EncodeOptions();
             outDirectory = outDirectory ?? WorkingDirectory;
 
             // Input validation.
@@ -118,8 +121,9 @@ namespace DEnc
                 inPath: inFile,
                 outDirectory: WorkingDirectory,
                 outFilename: outFilename,
+                options: options,
                 framerate: framerate,
-                keyInterval: keyframeInterval,
+                keyframeInterval: keyframeInterval,
                 qualities: qualities.OrderByDescending(x => x.Bitrate),
                 metadata: inputStats,
                 defaultBitrate: inputBitrate,

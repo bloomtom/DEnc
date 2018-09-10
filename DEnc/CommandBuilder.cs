@@ -67,22 +67,27 @@ namespace DEnc
             new Codec("vp8", "webm", "webm")
         }.ToDictionary(x => x.Name);
 
-        private static IEnumerable<StreamFile> BuildVideoCommands(IEnumerable<MediaStream> streams, IEnumerable<IQuality> qualities, int defaultBitrate, int framerate, int keyInterval, bool enableStreamCopying, string outDirectory, string outFilename)
+        private static IEnumerable<StreamFile> BuildVideoCommands(IEnumerable<MediaStream> streams, IEnumerable<IQuality> qualities, ICollection<string> additionalFlags, int framerate, int keyframeInterval, int defaultBitrate, bool enableStreamCopying, string outDirectory, string outFilename)
         {
+            additionalFlags = additionalFlags ?? new List<string>();
+
             var getSize = new Func<IQuality, string>(x => { return (x.Width == 0 || x.Height == 0) ? "" : $"-s {x.Width}x{x.Height}"; });
             var getBitrate = new Func<int, string>(x => { return (x == 0) ? "" : $"-b:v {x}k"; });
-            var getPreset = new Func<IQuality, string>(x => { return (string.IsNullOrEmpty(x.Preset)) ? "" : $"-preset {x.Preset}"; });
+            var getPreset = new Func<string, string>(x => { return (string.IsNullOrEmpty(x)) ? "" : $"-preset {x}"; });
+            var getProfile = new Func<string, string>(x => { return (string.IsNullOrEmpty(x)) ? "" : $"-profile:v {x}"; });
+            var getProfileLevel = new Func<string, string>(x => { return (string.IsNullOrEmpty(x)) ? "" : $"-level {x}"; });
             var getFramerate = new Func<int, string>(x => { return (x == 0) ? "" : $"-r {x}"; });
             var getFilename = new Func<string, string, int, string>((path, filename, bitrate) => { return Path.Combine(path, $"{filename}_{(bitrate == 0 ? "original" : bitrate.ToString())}.mp4"); });
 
-            var getVideoCodec = new Func<string, bool, int, string>((sourceCodec, enableCopy, keyframeInterval) =>
+            var getVideoCodec = new Func<string, bool, int, string>((sourceCodec, enableCopy, keyInterval) =>
             {
+                string defaultCoding = $"-x264-params keyint={keyframeInterval}:scenecut=0";
                 switch (sourceCodec)
                 {
                     case "h264":
-                        return $"-vcodec {(enableCopy ? "copy" : "libx264")} -x264-params keyint={keyframeInterval}:scenecut=0";
+                        return $"-vcodec {(enableCopy ? "copy" : "libx264")} {defaultCoding}";
                     default:
-                        return $"-vcodec libx264 -x264-params keyint={keyframeInterval}:scenecut=0";
+                        return $"-vcodec libx264 {defaultCoding}";
                 }
             });
 
@@ -99,18 +104,17 @@ namespace DEnc
                         Origin = stream.index,
                         Name = quality.Bitrate.ToString(),
                         Path = path,
-                        Argument = string.Join(" ", new string[]
+                        Argument = $"-map 0:{stream.index} " + string.Join(" ", additionalFlags.Concat(new string[]
                         {
-                            $"-map 0:{stream.index}",
-                            "-sn",
-                            "-map_metadata -1",
                             getSize(quality),
                             getBitrate(quality.Bitrate == 0 ? defaultBitrate : quality.Bitrate),
-                            getPreset(quality),
+                            getPreset(quality.Preset),
+                            getProfile(quality.Profile),
+                            getProfileLevel(quality.Level),
                             getFramerate(framerate),
-                            getVideoCodec(stream.codec_name, quality.Bitrate == 0 && enableStreamCopying, keyInterval),
+                            getVideoCodec(stream.codec_name, quality.Bitrate == 0 && enableStreamCopying, keyframeInterval),
                             '"' + path + '"'
-                        })
+                        }))
                     };
 
                     output.Add(command);
@@ -119,8 +123,10 @@ namespace DEnc
             return output;
         }
 
-        private static IEnumerable<StreamFile> BuildAudioCommands(IEnumerable<MediaStream> streams, string outDirectory, string outFilename)
+        private static IEnumerable<StreamFile> BuildAudioCommands(IEnumerable<MediaStream> streams, ICollection<string> additionalFlags, string outDirectory, string outFilename)
         {
+            additionalFlags = additionalFlags ?? new List<string>();
+
             var output = new List<StreamFile>();
             foreach (var stream in streams)
             {
@@ -135,14 +141,11 @@ namespace DEnc
                     Origin = stream.index,
                     Name = language,
                     Path = path,
-                    Argument = string.Join(" ", new string[]
+                    Argument = $"-map 0:{stream.index} " + string.Join(" ", additionalFlags.Concat(new string[]
                     {
-                            $"-map 0:{stream.index}",
-                             "-sn",
-                             "-map_metadata -1",
                             codec,
                             '"' + path + '"'
-                    })
+                    }))
                 };
 
                 output.Add(command);
@@ -193,21 +196,23 @@ namespace DEnc
             string inPath,
             string outDirectory,
             string outFilename,
-            int framerate,
-            int keyInterval,
+            IEncodeOptions options,
             IEnumerable<IQuality> qualities,
+            int framerate,
+            int keyframeInterval,
             MediaMetadata metadata,
             int defaultBitrate,
             bool enableStreamCopying)
         {
 
-            var videoCommand = BuildVideoCommands(metadata.VideoStreams, qualities, defaultBitrate, framerate, keyInterval, enableStreamCopying, outDirectory, outFilename);
-            var audioCommand = BuildAudioCommands(metadata.AudioStreams, outDirectory, outFilename);
+            var videoCommand = BuildVideoCommands(metadata.VideoStreams, qualities, options.AdditionalVideoFlags, framerate, keyframeInterval, defaultBitrate, enableStreamCopying, outDirectory, outFilename);
+            var audioCommand = BuildAudioCommands(metadata.AudioStreams, options.AdditionalAudioFlags, outDirectory, outFilename);
             var subtitleCommand = BuildSubtitleCommands(metadata.SubtitleStreams, outDirectory, outFilename);
 
             var allCommands = videoCommand.Concat(audioCommand).Concat(subtitleCommand);
 
-            string parameters = $"-i \"{inPath}\" -y -hide_banner {string.Join(" ", allCommands.Select(x => x.Argument))}";
+            var additionalFlags = options.AdditionalFlags ?? new List<string>();
+            string parameters = $"-i \"{inPath}\" -y -hide_banner {string.Join(" ", additionalFlags.Concat(allCommands.Select(x => x.Argument)))}";
 
             return new CommandBuildResult(parameters, allCommands);
         }

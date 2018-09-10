@@ -31,6 +31,14 @@ namespace DEnc
         /// ffmpeg preset (veryfast, fast, medium, slow, veryslow).
         /// </summary>
         string Preset { get; set; }
+        /// <summary>
+        /// ffmpeg h264 encoding profile (Baseline, Main, High,)
+        /// </summary>
+        string Profile { get; set; }
+        /// <summary>
+        /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
+        /// </summary>
+        string Level { get; set; }
     }
 
     /// <summary>
@@ -54,6 +62,14 @@ namespace DEnc
         /// ffmpeg preset (veryfast, fast, medium, slow, veryslow).
         /// </summary>
         public string Preset { get; set; } = "medium";
+        /// <summary>
+        /// ffmpeg h264 encoding profile (Baseline, Main, High,)
+        /// </summary>
+        public string Profile { get; set; } = "High";
+        /// <summary>
+        /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
+        /// </summary>
+        public string Level { get; set; } = "4.0";
 
         public Quality()
         {
