@@ -9,6 +9,7 @@ namespace DEnc
     public class DashEncodeResult
     {
         public MPD DashFileContent { get; protected set; }
+        public IReadOnlyDictionary<string, string> Metadata { get; private set; }
         public TimeSpan FileDuration { get; protected set; }
         public string DashFilePath { get; protected set; }
 
@@ -17,9 +18,10 @@ namespace DEnc
         /// </summary>
         public IEnumerable<string> MediaFiles => DashFileContent?.Period.SelectMany(x => x.AdaptationSet.SelectMany(y => y.Representation.SelectMany(z => z.BaseURL)));
 
-        public DashEncodeResult(MPD file, TimeSpan duration, string path)
+        public DashEncodeResult(MPD file, IReadOnlyDictionary<string, string> metadata, TimeSpan duration, string path)
         {
             DashFileContent = file;
+            Metadata = metadata;
             FileDuration = duration;
             DashFilePath = path;
         }

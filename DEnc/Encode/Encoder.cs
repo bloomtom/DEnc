@@ -176,7 +176,7 @@ namespace DEnc
             {
                 MPD mpd = PostProcessMpdFile(mpdFilepath, subtitles);
 
-                var result = new DashEncodeResult(mpd, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), mpdFilepath);
+                var result = new DashEncodeResult(mpd, inputStats.Metadata, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), mpdFilepath);
 
                 // Detect error in MP4Box process and cleanup, then return null.
                 if (mpdResult.ExitCode != 0)
@@ -296,6 +296,18 @@ namespace DEnc
                     }
                 }
 
+                var metadata = new Dictionary<string, string>();
+                if (t.format.tag != null)
+                {
+                    foreach (var item in t.format.tag)
+                    {
+                        if (!metadata.ContainsKey(item.key))
+                        {
+                            metadata.Add(item.key.ToLower(System.Globalization.CultureInfo.InvariantCulture), item.value);
+                        }
+                    }
+                }
+
                 var firstVideoStream = videoStreams.FirstOrDefault(x => CommandBuilder.SupportedCodecs.ContainsKey(x.codec_name));
                 var firstAudioStream = audioStreams.FirstOrDefault(x => CommandBuilder.SupportedCodecs.ContainsKey(x.codec_name));
 
@@ -303,7 +315,7 @@ namespace DEnc
 
                 float duration = t.format != null ? t.format.duration : 0;
 
-                var meta = new MediaMetadata(videoStreams, audioStreams, subtitleStreams, t.format.bit_rate, framerate, duration);
+                var meta = new MediaMetadata(videoStreams, audioStreams, subtitleStreams, metadata, t.format.bit_rate, framerate, duration);
                 return meta;
             }
 

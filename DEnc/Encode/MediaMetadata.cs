@@ -10,6 +10,7 @@ namespace DEnc
         public IEnumerable<MediaStream> AudioStreams { get; private set; }
         public IEnumerable<MediaStream> VideoStreams { get; private set; }
         public IEnumerable<MediaStream> SubtitleStreams { get; private set; }
+        public IReadOnlyDictionary<string, string> Metadata { get; private set; }
         public long Bitrate { get; private set; }
         public decimal Framerate { get; private set; }
         public float Duration { get; private set; }
@@ -18,6 +19,7 @@ namespace DEnc
             IEnumerable<MediaStream> videoStreams,
             IEnumerable<MediaStream> audioStreams,
             IEnumerable<MediaStream> subtitleStreams,
+            IReadOnlyDictionary<string, string> metadata,
             long bitrate,
             decimal framerate,
             float duration)
@@ -25,6 +27,7 @@ namespace DEnc
             VideoStreams = videoStreams;
             AudioStreams = audioStreams;
             SubtitleStreams = subtitleStreams;
+            Metadata = metadata;
             Bitrate = bitrate;
             Framerate = framerate;
             Duration = duration;
