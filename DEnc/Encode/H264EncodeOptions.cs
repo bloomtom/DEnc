@@ -22,6 +22,9 @@ namespace DEnc
         /// </summary>
         public ICollection<string> AdditionalVideoFlags { get; set; } = new List<string>() { "-sn", "-map_metadata -1", };
 
+        /// <summary>
+        /// 
+        /// </summary>
         public H264EncodeOptions()
         {
         }

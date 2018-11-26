@@ -187,11 +187,11 @@ namespace DEnc
         /// <param name="inPath">The source file to encode.</param>
         /// <param name="outDirectory">The directory to place output file in.</param>
         /// <param name="outFilename">The base filename to use when naming output files (format is [outFilename]_[qualityBitrate].mp4).</param>
+        /// <param name="options">Flags to pass to the encoder.</param>
         /// <param name="framerate">The output framerate.</param>
-        /// <param name="keyInterval">The output key interval. For best results should be a multiple of framerate.</param>
+        /// <param name="keyframeInterval">The output key interval. For best results should be a multiple of framerate.</param>
+        /// <param name="metadata">Metadata on the encoded stream.</param>
         /// <param name="qualities">A collection of qualities to encode to. Entries in the collection must have a distinct bitrate, otherwise behavior is undefined.</param>
-        /// <param name="inputAudioCodec">The input file audio codec.</param>
-        /// <param name="inputVideoCodec">The input file video codec</param>
         /// <param name="defaultBitrate">The bitrate to use for the copy quality. Typically the input file bitrate.</param>
         /// <param name="enableStreamCopying">Set true to enable -vcodec copy for the copy quality.</param>
         internal static CommandBuildResult BuildFfmpegCommand(

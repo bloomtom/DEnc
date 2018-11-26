@@ -8,14 +8,37 @@ using DEnc.Serialization;
 
 namespace DEnc
 {
+    /// <summary>
+    /// A construct for performing encode functions.
+    /// </summary>
     public class Encoder
     {
+        /// <summary>
+        /// The path to ffmpeg.
+        /// </summary>
         public string FFmpegPath { get; private set; }
+        /// <summary>
+        /// The path to ffprobe.
+        /// </summary>
         public string FFprobePath { get; private set; }
+        /// <summary>
+        /// The path to MP4Box.
+        /// </summary>
         public string BoxPath { get; private set; }
+        /// <summary>
+        /// The temp path to store encodes in progress.
+        /// </summary>
         public string WorkingDirectory { get; private set; }
 
+        /// <summary>
+        /// If set to true, quality crushing is not performed.
+        /// You may end up with files larger then your input depending on your quality set.
+        /// </summary>
         public bool DisableQualityCrushing { get; set; } = false;
+        /// <summary>
+        /// If set to true, the 'copy' quality will actually copy the media streams instead of running them through the encoder.
+        /// This may result in poor compatibility depending on the input streams.
+        /// </summary>
         public bool EnableStreamCopying { get; set; } = false;
 
         private const double bitrateCrushTolerance = 0.95;
@@ -28,6 +51,7 @@ namespace DEnc
         /// The given pointers to ffmpeg and MP4Box are tested by executing them with no parameters upon construction. An exception is thrown if the execution fails.
         /// </summary>
         /// <param name="ffmpegPath">A full path or environmental variable for ffmpeg.</param>
+        /// <param name="ffprobePath">A full path or environmental variable for ffprobe.</param>
         /// <param name="boxPath">A full path or environmental variable for MP4Box.</param>
         ///<param name="stdoutLog">A callback which reflects stdout of ffmpeg/MP4Box. May be left null.</param>
         ///<param name="stderrLog">A callback used for logging, and for the stderr of ffmpeg/MP4Box. May be left null.</param>
@@ -181,7 +205,7 @@ namespace DEnc
                 // Detect error in MP4Box process and cleanup, then return null.
                 if (mpdResult.ExitCode != 0)
                 {
-                    stderrLog.Invoke($"ERROR: MP4Box returned code {ffResult.ExitCode}.");
+                    stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}.");
                     CleanOutputFiles(result.MediaFiles.Select(x => Path.Combine(outDirectory, x)));
                     CleanOutputFiles(mpdResult.Output);
                     return null;

@@ -6,11 +6,26 @@ using System.Text;
 
 namespace DEnc
 {
+    /// <summary>
+    /// A representation of the output MPEG DASH mpd file.
+    /// </summary>
     public class DashEncodeResult
     {
+        /// <summary>
+        /// This is the exact mpd content deserialized from XML.
+        /// </summary>
         public MPD DashFileContent { get; protected set; }
+        /// <summary>
+        /// Arbitrary metadata about the output streams.
+        /// </summary>
         public IReadOnlyDictionary<string, string> Metadata { get; private set; }
+        /// <summary>
+        /// The play duration of the media.
+        /// </summary>
         public TimeSpan FileDuration { get; protected set; }
+        /// <summary>
+        /// The exact path to the mpd file.
+        /// </summary>
         public string DashFilePath { get; protected set; }
 
         /// <summary>
@@ -18,6 +33,13 @@ namespace DEnc
         /// </summary>
         public IEnumerable<string> MediaFiles => DashFileContent?.Period.SelectMany(x => x.AdaptationSet.SelectMany(y => y.Representation.SelectMany(z => z.BaseURL)));
 
+        /// <summary>
+        /// Create a typical instance of DashEncodeResult.
+        /// </summary>
+        /// <param name="file">The exact mpd content deserialized from XML.</param>
+        /// <param name="metadata">Arbitrary metadata about the output streams.</param>
+        /// <param name="duration">The play duration of the media.</param>
+        /// <param name="path">The exact path to the mpd file.</param>
         public DashEncodeResult(MPD file, IReadOnlyDictionary<string, string> metadata, TimeSpan duration, string path)
         {
             DashFileContent = file;

@@ -6,12 +6,20 @@
     <Description>A dotnet library for making encoding videos as MPEG DASH simple and straightforward.</Description>
     <Copyright>MIT</Copyright>
     <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
-    <Version>0.2.6</Version>
+    <Version>0.2.7</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>bloomtom.DEnc</PackageId>
     <PackageProjectUrl>https://github.com/bloomtom/DEnc</PackageProjectUrl>
     <RepositoryUrl>https://github.com/bloomtom/DEnc</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>bin\Debug\netstandard2.0\DEnc.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>bin\Debug\netstandard2.0\DEnc.xml</DocumentationFile>
   </PropertyGroup>
 
 </Project>

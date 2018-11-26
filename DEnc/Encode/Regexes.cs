@@ -5,8 +5,8 @@ using System.Text.RegularExpressions;
 
 namespace DEnc.Encode
 {
-    public static class Regexes
+    internal static class Regexes
     {
-        public static Regex ParseProgress { get; } = new Regex(@"(?<=frame=.+time=)\d\S+", RegexOptions.Compiled);
+        internal static Regex ParseProgress { get; } = new Regex(@"(?<=frame=.+time=)\d\S+", RegexOptions.Compiled);
     }
 }

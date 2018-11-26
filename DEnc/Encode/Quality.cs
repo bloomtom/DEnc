@@ -4,15 +4,36 @@ using System.Text;
 
 namespace DEnc
 {
+    /// <summary>
+    /// Some example qualities.
+    /// </summary>
     public enum DefaultQuality
     {
+        /// <summary>
+        /// Very low quality. Low grade SD to low grade HD
+        /// </summary>
         potato,
+        /// <summary>
+        /// Low quality HD.
+        /// </summary>
         low,
+        /// <summary>
+        /// Decent quality HD.
+        /// </summary>
         medium,
+        /// <summary>
+        /// Good quality HD.
+        /// </summary>
         high,
+        /// <summary>
+        /// Excellend quality HD
+        /// </summary>
         ultra
     }
 
+    /// <summary>
+    /// An interface for a quality. Qualities are used to specify the outputs for DASHification.
+    /// </summary>
     public interface IQuality
     {
         /// <summary>
@@ -79,6 +100,9 @@ namespace DEnc
         /// </summary>
         public string PixelFormat { get; set; } = "yuv420p";
 
+        /// <summary>
+        /// 
+        /// </summary>
         public Quality()
         {
 
@@ -99,11 +123,21 @@ namespace DEnc
             Preset = preset;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
             return $"{Width}x{Height} @ {Bitrate} kb/s - {Preset}";
         }
 
+        /// <summary>
+        /// Generates a set of qualities from a given DefaultQuality level.
+        /// </summary>
+        /// <param name="q"></param>
+        /// <param name="preset"></param>
+        /// <returns></returns>
         public static IEnumerable<IQuality> GenerateDefaultQualities(DefaultQuality q, string preset)
         {
             switch (q)
@@ -158,11 +192,20 @@ namespace DEnc
             return new Quality(0, 0, 0, "");
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
         public override bool Equals(object obj)
         {
             return base.Equals(Bitrate);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         public override int GetHashCode()
         {
             return Bitrate.GetHashCode();
