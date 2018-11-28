@@ -52,11 +52,18 @@ namespace DEnc
                     if (errorCallback != null) { errorCallback.Invoke(e.Data); }
                 };
 
-                process.Start();
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-                process.WaitForExit();
-                exitCode = process.ExitCode;
+                try
+                {
+                    process.Start();
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                    process.WaitForExit();
+                    exitCode = process.ExitCode;
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Failed to execute {path} with arguments {arguments}. Ex: {ex.ToString()}");
+                }
             }
 
             return new ExecutionResult(exitCode, output, error);
