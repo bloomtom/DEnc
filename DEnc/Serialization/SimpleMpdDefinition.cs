@@ -6,6 +6,8 @@ using System.Xml;
 
 namespace DEnc.Serialization
 {
+#pragma warning disable CS1591
+
     [XmlRoot(ElementName = "ProgramInformation", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
     public class ProgramInformation
     {
@@ -325,4 +327,5 @@ namespace DEnc.Serialization
         }
     }
 
+#pragma warning restore CS1591
 }

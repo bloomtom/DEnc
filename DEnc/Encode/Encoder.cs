@@ -81,10 +81,10 @@ namespace DEnc
         /// <param name="qualities">Parameters to pass to ffmpeg when performing the preparation encoding. Bitrates must be distinct, an exception will be thrown if they are not.</param>
         /// <param name="options">Options for the ffmpeg encode.</param>
         /// <param name="outDirectory">The directory to place output files and intermediary files in.</param>
-        /// <param name="progress">A callback for progress events.</param>
+        /// <param name="progress">A callback for progress events. The collection will contain values with the Name property of "Encode", "DASHify", "Post Process"</param>
         /// <returns>An object containing a representation of the generated MPD file, it's path, and the associated filenames, or null if no file generated.</returns>
         public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
-            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, Action<float> progress = null)
+            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null)
         {
             options = options ?? new H264EncodeOptions();
             outDirectory = outDirectory ?? WorkingDirectory;
@@ -120,6 +120,16 @@ namespace DEnc
                 qualities = CrushQualities(qualities, inputBitrate);
             }
 
+            var progressList = new List<EncodeStageProgress>()
+            {
+                new EncodeStageProgress("Encode", 0),
+                new EncodeStageProgress("DASHify", 0),
+                new EncodeStageProgress("Post Process", 0)
+            };
+            const int encodeStage = 0;
+            const int dashStage = 1;
+            const int postStage = 2;
+
             var stdErrShim = stderrLog;
             if (progress != null)
             {
@@ -131,7 +141,7 @@ namespace DEnc
                         var match = Encode.Regexes.ParseProgress.Match(x);
                         if (match.Success && TimeSpan.TryParse(match.Value, out TimeSpan p))
                         {
-                            progress.Invoke(Math.Min(1, (float)(p.TotalMilliseconds / 1000) / inputStats.Duration));
+                            ReportProgress(progress, progressList, encodeStage, Math.Min(1, (float)(p.TotalMilliseconds / 1000) / inputStats.Duration));
                         }
                     }
                 });
@@ -178,8 +188,16 @@ namespace DEnc
             stderrLog.Invoke($"Running MP4Box with arguments: {mp4boxCommand.RenderedCommand}");
             mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog);
 
+            // Report DASH complete.
+            if (mpdResult.ExitCode == 0)
+            {
+                ReportProgress(progress, progressList, dashStage, 1);
+            }
+
             // Cleanup intermediates.
             CleanOutputFiles(audioVideoFiles.Select(x => x.Path));
+
+            ReportProgress(progress, progressList, postStage, 0.33);
 
             // Move subtitles
             List<StreamFile> subtitles = new List<StreamFile>();
@@ -195,28 +213,44 @@ namespace DEnc
                 }
             }
 
-            string mpdFilepath = mp4boxCommand.CommandPieces.FirstOrDefault().Path;
-            if (File.Exists(mpdFilepath))
+            ReportProgress(progress, progressList, postStage, 0.66);
+
+            try
             {
-                MPD mpd = PostProcessMpdFile(mpdFilepath, subtitles);
-
-                var result = new DashEncodeResult(mpd, inputStats.Metadata, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), mpdFilepath);
-
-                // Detect error in MP4Box process and cleanup, then return null.
-                if (mpdResult.ExitCode != 0)
+                string mpdFilepath = mp4boxCommand.CommandPieces.FirstOrDefault().Path;
+                if (File.Exists(mpdFilepath))
                 {
-                    stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}.");
-                    CleanOutputFiles(result.MediaFiles.Select(x => Path.Combine(outDirectory, x)));
-                    CleanOutputFiles(mpdResult.Output);
-                    return null;
+                    MPD mpd = PostProcessMpdFile(mpdFilepath, subtitles);
+
+                    var result = new DashEncodeResult(mpd, inputStats.Metadata, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), mpdFilepath);
+
+                    // Detect error in MP4Box process and cleanup, then return null.
+                    if (mpdResult.ExitCode != 0)
+                    {
+                        stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}.");
+                        CleanOutputFiles(result.MediaFiles.Select(x => Path.Combine(outDirectory, x)));
+                        CleanOutputFiles(mpdResult.Output);
+
+                        return null;
+                    }
+
+                    // Success.
+                    return result;
                 }
 
-                // Success.
-                return result;
+                stderrLog.Invoke($"ERROR: MP4Box did not produce the expected mpd file at path {mpdFilepath}.");
+                return null;
             }
+            finally
+            {
+                ReportProgress(progress, progressList, postStage, 1);
+            }
+        }
 
-            stderrLog.Invoke($"ERROR: MP4Box did not produce the expected mpd file at path {mpdFilepath}.");
-            return null;
+        private static void ReportProgress(IProgress<IEnumerable<EncodeStageProgress>> reporter, List<EncodeStageProgress> progresses, int index, double value)
+        {
+            progresses[index] = new EncodeStageProgress(progresses[index].Name, value);
+            reporter?.Report(progresses);
         }
 
         /// <summary>
