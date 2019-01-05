@@ -4,6 +4,7 @@ using DEnc;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using NaiveProgress;
 
 namespace DEncTests
 {
