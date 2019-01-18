@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NaiveProgress;
+using System.Threading;
 
 namespace DEncTests
 {
@@ -42,6 +43,56 @@ namespace DEncTests
                 Assert.Equal(1.0, progress.Where(x => x.Name == "Encode").Select(y => y.Progress).Single());
                 Assert.Equal(1.0, progress.Where(x => x.Name == "DASHify").Select(y => y.Progress).Single());
                 Assert.Equal(1.0, progress.Where(x => x.Name == "Post Process").Select(y => y.Progress).Single());
+            }
+            finally
+            {
+                if (s?.DashFilePath != null)
+                {
+                    string basePath = Path.GetDirectoryName(s.DashFilePath);
+                    if (File.Exists(s.DashFilePath))
+                    {
+                        File.Delete(s.DashFilePath);
+                    }
+
+                    foreach (var file in s.MediaFiles)
+                    {
+                        try
+                        {
+                            File.Delete(Path.Combine(basePath, file));
+                        }
+                        catch (Exception) { }
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public void TestCancellation()
+        {
+            DashEncodeResult s = null;
+
+            var ts = new CancellationTokenSource(500);
+            try
+            {
+                string runPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\");
+                
+                Encoder c = new Encoder();
+                Assert.Throws<OperationCanceledException>(() =>
+                {
+                    c.GenerateDash(
+                    inFile: Path.Combine(runPath, "testfile.ogg"),
+                    outFilename: "output",
+                    framerate: 30,
+                    keyframeInterval: 90,
+                    qualities: new List<Quality>
+                    {
+                        new Quality(1920, 1080, 4000, "fast"),
+                        new Quality(1280, 720, 1280, "fast"),
+                        new Quality(640, 480, 768, "fast"),
+                    },
+                    outDirectory: runPath,
+                    cancel: ts.Token);
+                });
             }
             finally
             {

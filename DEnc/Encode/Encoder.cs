@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Diagnostics;
 using DEnc.Serialization;
+using System.Threading;
 
 namespace DEnc
 {
@@ -82,10 +83,13 @@ namespace DEnc
         /// <param name="options">Options for the ffmpeg encode.</param>
         /// <param name="outDirectory">The directory to place output files and intermediary files in.</param>
         /// <param name="progress">A callback for progress events. The collection will contain values with the Name property of "Encode", "DASHify", "Post Process"</param>
+        /// <param name="cancel">Allows cancellation of the operation.</param>
         /// <returns>An object containing a representation of the generated MPD file, it's path, and the associated filenames, or null if no file generated.</returns>
         public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
-            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null)
+            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
         {
+            cancel.ThrowIfCancellationRequested();
+
             options = options ?? new H264EncodeOptions();
             outDirectory = outDirectory ?? WorkingDirectory;
 
@@ -163,18 +167,37 @@ namespace DEnc
                 defaultBitrate: inputBitrate,
                 enableStreamCopying: EnableStreamCopying);
 
-            // Generate intermediates
-            ExecutionResult ffResult;
-            stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.RenderedCommand}");
-            ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, stdErrShim);
+            cancel.ThrowIfCancellationRequested();
 
-            // Detect error in ffmpeg process and cleanup, then return null.
-            if (ffResult.ExitCode != 0)
+            // Generate intermediates
+            try
             {
-                stderrLog.Invoke($"ERROR: ffmpeg returned code {ffResult.ExitCode}.");
-                CleanOutputFiles(ffmpegCommand.CommandPieces.Select(x => x.Path));
-                return null;
+                ExecutionResult ffResult;
+                stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.RenderedCommand}");
+                ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, stdErrShim, cancel);
+
+                // Detect error in ffmpeg process and cleanup, then return null.
+                if (ffResult.ExitCode != 0)
+                {
+                    stderrLog.Invoke($"ERROR: ffmpeg returned code {ffResult.ExitCode}. File: {inFile}");
+                    CleanOutputFiles(ffmpegCommand.CommandPieces.Select(x => x.Path));
+                    return null;
+                }
             }
+            catch (Exception ex)
+            {
+                CleanOutputFiles(ffmpegCommand.CommandPieces.Select(x => x.Path));
+
+                if (ex is OperationCanceledException)
+                {
+                    throw new OperationCanceledException($"Exception running ffmpeg on {inFile}", ex);
+                }
+                else
+                {
+                    throw new Exception($"Exception running ffmpeg on {inFile}", ex);
+                }
+            }
+
 
             var audioVideoFiles = ffmpegCommand.CommandPieces.Where(x => x.Type == StreamType.Video || x.Type == StreamType.Audio);
 
@@ -186,7 +209,24 @@ namespace DEnc
             // Generate DASH files.
             ExecutionResult mpdResult;
             stderrLog.Invoke($"Running MP4Box with arguments: {mp4boxCommand.RenderedCommand}");
-            mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog);
+            try
+            {
+                mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog, cancel);
+
+            }
+            catch (Exception ex)
+            {
+                CleanOutputFiles(audioVideoFiles.Select(x => x.Path));
+                
+                if (ex is OperationCanceledException)
+                {
+                    throw new OperationCanceledException($"Exception running MP4box on {inFile}", ex);
+                }
+                else
+                {
+                    throw new Exception($"Exception running MP4box on {inFile}", ex);
+                }
+            }
 
             // Report DASH complete.
             if (mpdResult.ExitCode == 0)
@@ -227,7 +267,7 @@ namespace DEnc
                     // Detect error in MP4Box process and cleanup, then return null.
                     if (mpdResult.ExitCode != 0)
                     {
-                        stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}.");
+                        stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}. File: {inFile}");
                         CleanOutputFiles(result.MediaFiles.Select(x => Path.Combine(outDirectory, x)));
                         CleanOutputFiles(mpdResult.Output);
 
@@ -238,7 +278,7 @@ namespace DEnc
                     return result;
                 }
 
-                stderrLog.Invoke($"ERROR: MP4Box did not produce the expected mpd file at path {mpdFilepath}.");
+                stderrLog.Invoke($"ERROR: MP4Box did not produce the expected mpd file at path {mpdFilepath}. File: {inFile}");
                 return null;
             }
             finally

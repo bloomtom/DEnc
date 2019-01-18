@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DEnc
@@ -22,7 +23,7 @@ namespace DEnc
 
     internal static class ManagedExecution
     {
-        public static ExecutionResult Start(string path, string arguments, Action<string> outputCallback = null, Action<string> errorCallback = null)
+        public static ExecutionResult Start(string path, string arguments, Action<string> outputCallback = null, Action<string> errorCallback = null, CancellationToken cancel = default(CancellationToken))
         {
             int exitCode = -1;
             var output = new List<string>();
@@ -52,13 +53,29 @@ namespace DEnc
                     if (errorCallback != null) { errorCallback.Invoke(e.Data); }
                 };
 
+                cancel.ThrowIfCancellationRequested();
+
                 try
                 {
                     process.Start();
                     process.BeginOutputReadLine();
                     process.BeginErrorReadLine();
-                    process.WaitForExit();
+
+                    while (!process.HasExited)
+                    {
+                        if (cancel.IsCancellationRequested)
+                        {
+                            process.Kill();
+                        }
+                        cancel.ThrowIfCancellationRequested();
+                        process.WaitForExit(1000);
+                    }
+                    
                     exitCode = process.ExitCode;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
