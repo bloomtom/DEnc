@@ -118,6 +118,7 @@ namespace DEnc
             }
 
             var inputStats = ProbeFile(inFile);
+            if (inputStats == null) { throw new NullReferenceException("ffprobe query returned a null result."); }
             int inputBitrate = (int)(inputStats.Bitrate / 1024);
             if (!DisableQualityCrushing)
             {

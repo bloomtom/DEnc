@@ -70,7 +70,8 @@ namespace DEnc
                         cancel.ThrowIfCancellationRequested();
                         process.WaitForExit(1000);
                     }
-                    
+                    process.WaitForExit();
+
                     exitCode = process.ExitCode;
                 }
                 catch (OperationCanceledException)
