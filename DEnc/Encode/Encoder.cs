@@ -429,7 +429,24 @@ namespace DEnc
                 try
                 {
                     stderrLog.Invoke("Deleting file " + file);
-                    File.Delete(file);
+                    int attempts = 0;
+                    while (File.Exists(file))
+                    {
+                        attempts++;
+                        try
+                        {
+                            File.Delete(file);
+                        }
+                        catch (IOException)
+                        {
+                            if (attempts < 5)
+                            {
+                                Thread.Sleep(200);
+                                continue;
+                            }
+                            throw;
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
