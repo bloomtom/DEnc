@@ -33,6 +33,7 @@ namespace DEnc
             {
                 StartInfo = new ProcessStartInfo(path, arguments)
                 {
+                    RedirectStandardInput = true,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -65,9 +66,14 @@ namespace DEnc
                     {
                         if (cancel.IsCancellationRequested)
                         {
-                            process.Kill();
+                            process.StandardInput.WriteLine("\x3"); // Send Ctrl+C
+                            process.WaitForExit(1000);
+                            if (!process.HasExited)
+                            {
+                                process.Kill();
+                            }
+                            cancel.ThrowIfCancellationRequested();
                         }
-                        cancel.ThrowIfCancellationRequested();
                         process.WaitForExit(1000);
                     }
                     process.WaitForExit();
