@@ -141,7 +141,11 @@ namespace DEncTests
                 Assert.NotNull(s.DashFilePath);
                 Assert.NotNull(s.DashFileContent);
                 Assert.NotNull(s.MediaFiles);
-                Assert.Equal(12, s.MediaFiles.Count());
+                Assert.Equal(16, s.MediaFiles.Count());
+                Assert.Contains("outputmulti_audio_default_1_dashinit.mp4", s.MediaFiles);
+                Assert.Contains("outputmulti_subtitle_eng_2.vtt", s.MediaFiles);
+                Assert.Contains("outputmulti_subtitle_unk_10.vtt", s.MediaFiles);
+                Assert.Contains("outputmulti_subtitle_eng_12.vtt", s.MediaFiles);
             }
             finally
             {

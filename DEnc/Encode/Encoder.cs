@@ -201,7 +201,7 @@ namespace DEnc
 
 
             var audioVideoFiles = ffmpegCommand.CommandPieces.Where(x => x.Type == StreamType.Video || x.Type == StreamType.Audio);
-
+            
             var mp4boxCommand = CommandBuilder.BuildMp4boxMpdCommand(
                 inFiles: audioVideoFiles.Select(x => x.Path),
                 outFilePath: Path.Combine(outDirectory, outFilename) + ".mpd",
@@ -240,7 +240,7 @@ namespace DEnc
 
             ReportProgress(progress, progressList, postStage, 0.33);
 
-            // Move subtitles
+            // Move subtitles found in media
             List<StreamFile> subtitles = new List<StreamFile>();
             foreach (var subFile in ffmpegCommand.CommandPieces.Where(x => x.Type == StreamType.Subtitle))
             {
@@ -251,6 +251,29 @@ namespace DEnc
                 {
                     if (File.Exists(subFile.Path)) { File.Delete(subFile.Path); }
                     File.Move(oldPath, subFile.Path);
+                }
+            }
+            // Add external subtitles
+            int originIndex = ffmpegCommand.CommandPieces.Max(x => x.Origin) + 1;
+            string baseFilename = Path.GetFileNameWithoutExtension(inFile);
+            foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(inFile), baseFilename + "*", SearchOption.TopDirectoryOnly))
+            {
+                if (vttFile.EndsWith(".vtt"))
+                {
+                    string vttFilename = Path.GetFileName(vttFile);
+                    string vttName = GetSubtitleName(vttFilename);
+                    string vttOutputPath = Path.Combine(outDirectory, $"{outFilename}_subtitle_{vttName}_{originIndex}.vtt");
+
+                    var subFile = new StreamFile()
+                    {
+                        Type = StreamType.Subtitle,
+                        Origin = originIndex,
+                        Path = vttOutputPath,
+                        Name = $"{vttName}_{originIndex}"
+                    };
+                    originIndex++;
+                    File.Copy(vttFile, vttOutputPath, true);
+                    subtitles.Add(subFile);
                 }
             }
 
@@ -286,6 +309,22 @@ namespace DEnc
             {
                 ReportProgress(progress, progressList, postStage, 1);
             }
+        }
+
+        private static string GetSubtitleName(string vttFilename)
+        {
+            if (vttFilename.Contains("."))
+            {
+                var dotComponents = vttFilename.Split('.');
+                foreach (var component in dotComponents)
+                {
+                    if (LanguageCodes.Languages.TryGetValue(component, out string languageName))
+                    {
+                        return languageName;
+                    }
+                }
+            }
+            return "unk";
         }
 
         private static void ReportProgress(IProgress<IEnumerable<EncodeStageProgress>> reporter, List<EncodeStageProgress> progresses, int index, double value)

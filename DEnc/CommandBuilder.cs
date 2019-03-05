@@ -133,7 +133,7 @@ namespace DEnc
             foreach (var stream in streams)
             {
                 bool codecSupported = SupportedCodecs.ContainsKey(stream.codec_name);
-                string language = stream.tag.Where(x => x.key == "language").Select(x => x.value).FirstOrDefault() ?? ((stream.disposition.@default > 0) ? "Default" : "Unknown");
+                string language = stream.tag.Where(x => x.key == "language").Select(x => x.value).FirstOrDefault() ?? ((stream.disposition.@default > 0) ? "default" : "unk");
                 string path = Path.Combine(outDirectory, $"{outFilename}_audio_{language}_{stream.index}.mp4");
                 string codec = codecSupported ? "" : $"-c:a aac -b:a {stream.bit_rate * 1.1}";
 
@@ -160,7 +160,7 @@ namespace DEnc
             var output = new List<StreamFile>();
             foreach (var stream in streams)
             {
-                string language = stream.tag.Where(x => x.key == "language").Select(x => x.value).FirstOrDefault() ?? "Unknown";
+                string language = stream.tag.Where(x => x.key == "language").Select(x => x.value).FirstOrDefault() ?? "unk";
                 string path = Path.Combine(outDirectory, $"{outFilename}_subtitle_{language}_{stream.index}.vtt");
 
                 var command = new StreamFile
