@@ -36,3 +36,19 @@ When you call `encoder.GenerateDash` a collection of qualities is required. It's
 ##### I asked for quality x,y,z but instead I got x,y,q or even just x,q instead. What gives?
 
 The qualities you give may not be what's actually output. The desired Qualities list is _crushed_ against the input file. Quality crushing happens when you ask for output bitrates higher than the input file bitrate by more than 5%. All bitrates that meet this criteria are removed from the qualities list, and they're replaced by a single _copy_ quality that will mirror the input media exactly, or at least as close as ffmpeg can get it to be. This feature is definitely recommended to save disk space and reduce encode time, but it is optional. Set `DisableQualityCrushing` to true to disable crushing.
+
+##### I have extra subtitle files. How do I get them into the output mpd?
+
+This is supported natively. Simply put vtt files alongside the source file with the same name, and they will be picked up. You can have multiple vtt files by using the naming format `file.X.vtt`. where X is some string or language code.
+
+For the input file "myvideo.mp4", the following table shows what will be picked up as an external subtitle file.
+
+Filename | Language | Imported?
+---|---|---
+myvideo.mp4 |  | No, this is the source.
+myvideo.srt |  | No, only vtt is supported.
+myvideo.vtt | unk | Yes
+myvideo.2.vtt | unk | Yes
+myvideo.subtitleasdf.vtt | unk | Yes
+myvideo.en.vtt | eng | Yes
+myvideo.jpn.vtt | jpn | Yes
