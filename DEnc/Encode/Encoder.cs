@@ -110,6 +110,11 @@ namespace DEnc
             {
                 throw new ArgumentOutOfRangeException("No qualitied specified. At least one quality is required.");
             }
+            if(outFilename.Contains("#"))
+            {
+                stderrLog("outfilename contained an '#' symbol. MP4Box doesn't like that so it will be removed.");
+                outFilename = outFilename.Replace("#", "");
+            }
 
             // Check bitrate distinction.
             if (qualities.GroupBy(x => x.Bitrate).Count() != qualities.Count())
@@ -213,7 +218,6 @@ namespace DEnc
             try
             {
                 mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog, cancel);
-
             }
             catch (Exception ex)
             {
