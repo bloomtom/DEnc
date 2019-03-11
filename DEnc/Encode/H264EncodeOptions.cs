@@ -14,13 +14,13 @@ namespace DEnc
         /// </summary>
         public ICollection<string> AdditionalFlags { get; set; } = new List<string>();
         /// <summary>
-        /// Flags to be applied to every audio stream. Default is "-sn -map_metadata -1".
+        /// Flags to be applied to every audio stream. You can add flags, but the defaults set may be important to the generation of a valid DASH file, so avoid changing them unless you know what they do.
         /// </summary>
-        public ICollection<string> AdditionalAudioFlags { get; set; } = new List<string>() { "-sn", "-map_metadata -1" };
+        public ICollection<string> AdditionalAudioFlags { get; set; } = new List<string>() { "-sn", "-ignore_unknown", "-map_chapters -1" };
         /// <summary>
-        /// Flags to be applied to every video stream. Default is "-sn -map_metadata -1".
+        /// Flags to be applied to every video stream. You can add flags, but the defaults set may be important to the generation of a valid DASH file, so avoid changing them unless you know what they do.
         /// </summary>
-        public ICollection<string> AdditionalVideoFlags { get; set; } = new List<string>() { "-sn", "-map_metadata -1", };
+        public ICollection<string> AdditionalVideoFlags { get; set; } = new List<string>() { "-sn", "-ignore_unknown", "-map_chapters -1" };
 
         /// <summary>
         /// 
