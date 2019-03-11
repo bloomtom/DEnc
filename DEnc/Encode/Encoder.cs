@@ -328,7 +328,7 @@ namespace DEnc
                     }
                 }
             }
-            return "unk";
+            return "und";
         }
 
         private static void ReportProgress(IProgress<IEnumerable<EncodeStageProgress>> reporter, List<EncodeStageProgress> progresses, int index, double value)
