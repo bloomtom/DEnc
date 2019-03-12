@@ -37,8 +37,8 @@ namespace DEnc
         /// </summary>
         public bool DisableQualityCrushing { get; set; } = false;
         /// <summary>
-        /// If set to true, the 'copy' quality will actually copy the media streams instead of running them through the encoder.
-        /// This may result in poor compatibility depending on the input streams.
+        /// If set to true, the 'copy' quality will actually copy the media streams under some circumstances instead of running them through the encoder.
+        /// Copying is only performed if the input video streams match the desired quality pixel format, and if the desired level and profile are superior to the input video streams.
         /// </summary>
         public bool EnableStreamCopying { get; set; } = false;
 
@@ -110,12 +110,11 @@ namespace DEnc
             {
                 throw new ArgumentOutOfRangeException("No qualitied specified. At least one quality is required.");
             }
-            if(outFilename.Contains("#"))
+            if (outFilename.Contains("#"))
             {
                 stderrLog("outfilename contained an '#' symbol. MP4Box doesn't like that so it will be removed.");
                 outFilename = outFilename.Replace("#", "");
             }
-
             // Check bitrate distinction.
             if (qualities.GroupBy(x => x.Bitrate).Count() != qualities.Count())
             {
@@ -129,6 +128,9 @@ namespace DEnc
             {
                 qualities = CrushQualities(qualities, inputBitrate);
             }
+            var compareQuality = qualities.First();
+            bool enableStreamCopy = EnableStreamCopying && compareQuality.Bitrate == 0 &&
+                Copyable264Infer.DetermineCopyCanBeDone(compareQuality.PixelFormat, compareQuality.Level, compareQuality.Profile, inputStats.VideoStreams);
 
             var progressList = new List<EncodeStageProgress>()
             {
@@ -171,7 +173,7 @@ namespace DEnc
                 qualities: qualities.OrderByDescending(x => x.Bitrate),
                 metadata: inputStats,
                 defaultBitrate: inputBitrate,
-                enableStreamCopying: EnableStreamCopying);
+                enableStreamCopying: enableStreamCopy);
 
             cancel.ThrowIfCancellationRequested();
 
@@ -206,7 +208,7 @@ namespace DEnc
 
 
             var audioVideoFiles = ffmpegCommand.CommandPieces.Where(x => x.Type == StreamType.Video || x.Type == StreamType.Audio);
-            
+
             var mp4boxCommand = CommandBuilder.BuildMp4boxMpdCommand(
                 inFiles: audioVideoFiles.Select(x => x.Path),
                 outFilePath: Path.Combine(outDirectory, outFilename) + ".mpd",
@@ -222,7 +224,7 @@ namespace DEnc
             catch (Exception ex)
             {
                 CleanOutputFiles(audioVideoFiles.Select(x => x.Path));
-                
+
                 if (ex is OperationCanceledException)
                 {
                     throw new OperationCanceledException($"Exception running MP4box on {inFile}", ex);
@@ -391,13 +393,19 @@ namespace DEnc
         {
             if (qualities == null || !qualities.Any()) { return qualities; }
 
+            IQuality defaultQuality = qualities.First();
+
             // Crush
             var crushed = qualities.Where(x => x.Bitrate < bitrateKbs * bitrateCrushTolerance).Distinct();
             if (crushed.Any() && crushed.Count() < qualities.Count())
             {
                 if (crushed.Where(x => x.Bitrate == 0).FirstOrDefault() == null)
                 {
-                    var newQualities = new List<IQuality>() { Quality.GetCopyQuality() }; // Add a copy quality to replace removed qualities.
+                    var copyQuality = Quality.GetCopyQuality();
+                    copyQuality.Level = defaultQuality.Level;
+                    copyQuality.PixelFormat = defaultQuality.PixelFormat;
+                    copyQuality.Profile = defaultQuality.Profile;
+                    var newQualities = new List<IQuality>() { copyQuality }; // Add a copy quality to replace removed qualities.
                     newQualities.AddRange(crushed);
                     return newQualities;
                 }

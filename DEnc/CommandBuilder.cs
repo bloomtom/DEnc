@@ -98,7 +98,7 @@ namespace DEnc
                 foreach (var quality in qualities)
                 {
                     string path = getFilename(outDirectory, outFilename, quality.Bitrate);
-
+                    bool copyThisStream = enableStreamCopying && quality.Bitrate == 0;
                     var command = new StreamFile
                     {
                         Type = StreamType.Video,
@@ -107,14 +107,14 @@ namespace DEnc
                         Path = path,
                         Argument = $"-map 0:{stream.index} " + string.Join(" ", additionalFlags.Concat(new string[]
                         {
-                            getSize(quality),
-                            getBitrate(quality.Bitrate == 0 ? defaultBitrate : quality.Bitrate),
-                            getPreset(quality.Preset),
-                            getProfile(quality.Profile),
-                            getProfileLevel(quality.Level),
-                            getPixelFormat(quality.PixelFormat),
+                            copyThisStream ? "" : getSize(quality),
+                            copyThisStream ? "" : getBitrate(quality.Bitrate == 0 ? defaultBitrate : quality.Bitrate),
+                            copyThisStream ? "" : getPreset(quality.Preset),
+                            copyThisStream ? "" : getProfile(quality.Profile),
+                            copyThisStream ? "" : getProfileLevel(quality.Level),
+                            copyThisStream ? "" : getPixelFormat(quality.PixelFormat),
                             getFramerate(framerate),
-                            getVideoCodec(stream.codec_name, quality.Bitrate == 0 && enableStreamCopying, keyframeInterval),
+                            getVideoCodec(stream.codec_name, copyThisStream, keyframeInterval),
                             '"' + path + '"'
                         }))
                     };

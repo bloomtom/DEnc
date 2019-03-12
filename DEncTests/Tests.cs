@@ -81,6 +81,7 @@ namespace DEncTests
                 string runPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\");
 
                 Encoder c = new Encoder();
+                c.EnableStreamCopying = true;
                 DashEncodeResult s = c.GenerateDash(
                     inFile: Path.Combine(runPath, "test5.mkv"),
                     outFilename: "outputmulti#1",
@@ -88,7 +89,7 @@ namespace DEncTests
                     keyframeInterval: 90,
                     qualities: new List<Quality>
                     {
-                        new Quality(1280, 720, 900, "ultrafast"),
+                        new Quality(1280, 720, 9000, "ultrafast"),
                         new Quality(640, 480, 768, "ultrafast"),
                     },
                     outDirectory: runPath);
@@ -113,6 +114,7 @@ namespace DEncTests
                 string runPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\");
 
                 Encoder c = new Encoder();
+                c.EnableStreamCopying = true;
                 DashEncodeResult s = c.GenerateDash(
                     inFile: Path.Combine(runPath, "testlang.mp4"),
                     outFilename: "outputlang",
@@ -128,6 +130,7 @@ namespace DEncTests
                 Assert.NotNull(s.DashFilePath);
                 Assert.NotNull(s.DashFileContent);
                 Assert.NotNull(s.MediaFiles);
+                Assert.Equal("avc1.42C028", s.DashFileContent.Period[0].AdaptationSet[0].Representation[0].Codecs);
                 Assert.True(s.DashFileContent.Period[0].AdaptationSet.Where(x => x.Lang == "jpn" && x.MaxFrameRate == null).SingleOrDefault().Representation.Count() == 1);
                 Assert.True(s.DashFileContent.Period[0].AdaptationSet.Where(x => x.Lang == "eng" && x.MaxFrameRate == null).SingleOrDefault().Representation.Count() == 2);
             });
@@ -139,7 +142,6 @@ namespace DEncTests
             TestCleanup((results) =>
             {
                 Encoder c = new Encoder();
-                DashEncodeResult s = null;
 
                 string testfile = Path.GetTempPath() + "denctestfile.test";
                 using (File.Create(testfile, 1, FileOptions.DeleteOnClose))
@@ -160,6 +162,52 @@ namespace DEncTests
                     });
                 }
             });
+        }
+
+        [Fact]
+        public void TestCopyableInferLevels()
+        {
+            Assert.True(Copyable264Infer.CompareLevels("4.2", 42));
+            Assert.False(Copyable264Infer.CompareLevels("4.1", 42));
+            Assert.True(Copyable264Infer.CompareLevels("1.0", 10));
+            Assert.False(Copyable264Infer.CompareLevels("1.0", 15));
+        }
+
+        [Fact]
+        public void TestCopyableInferProfiles()
+        {
+            Assert.True(Copyable264Infer.CompareProfiles("Main", "baseline"));
+            Assert.True(Copyable264Infer.CompareProfiles("main", "main"));
+            Assert.True(Copyable264Infer.CompareProfiles("High 10", "High"));
+            Assert.True(Copyable264Infer.CompareProfiles("High444", "High 10"));
+            Assert.False(Copyable264Infer.CompareProfiles("High", "High 10"));
+            Assert.False(Copyable264Infer.CompareProfiles("High", "High10"));
+            Assert.False(Copyable264Infer.CompareProfiles("main", "High 422"));
+        }
+
+        [Fact]
+        public void TestCopyableInfer()
+        {
+            Assert.True(Copyable264Infer.DetermineCopyCanBeDone("yuv420p", "4.0", "High",
+                new List<DEnc.Serialization.MediaStream>()
+                {
+                    new DEnc.Serialization.MediaStream(){ codec_name = "h264", level = 40, pix_fmt = "yuv420p", profile = "High" }
+                }));
+            Assert.True(Copyable264Infer.DetermineCopyCanBeDone("yuv420p", "4.2", "High",
+                new List<DEnc.Serialization.MediaStream>()
+                {
+                    new DEnc.Serialization.MediaStream(){ codec_name = "h264", level = 40, pix_fmt = "yuv420p", profile = "Main" }
+                }));
+            Assert.False(Copyable264Infer.DetermineCopyCanBeDone("yuv420p", "4.0", "High",
+                new List<DEnc.Serialization.MediaStream>()
+                {
+                    new DEnc.Serialization.MediaStream(){ codec_name = "h264", level = 40, pix_fmt = "yuv420p10le", profile = "High" }
+                }));
+            Assert.False(Copyable264Infer.DetermineCopyCanBeDone("yuv420p", "4.0", "High",
+                new List<DEnc.Serialization.MediaStream>()
+                {
+                    new DEnc.Serialization.MediaStream(){ codec_name = "h264", level = 40, pix_fmt = "yuv420p", profile = "High 10" }
+                }));
         }
 
         internal void TestCleanup(Action<List<DashEncodeResult>> test)

@@ -90,7 +90,7 @@ namespace DEnc
         /// <summary>
         /// ffmpeg h264 encoding profile (Baseline, Main, High,)
         /// </summary>
-        public string Profile { get; set; } = "High";
+        public string Profile { get; set; } = "high";
         /// <summary>
         /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
         /// </summary>
