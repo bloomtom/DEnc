@@ -210,6 +210,54 @@ namespace DEncTests
                 }));
         }
 
+        [Fact]
+        public void TestQualityCrushing()
+        {
+            var testQualities = new List<IQuality>
+            {
+                new Quality(0, 0, 500, ""),
+                new Quality(0, 0, 1200, ""),
+                new Quality(0, 0, 2000, "")
+            };
+
+            // Test crush down
+            var crushed = QualityCrusher.CrushQualities(testQualities, 1000);
+            Assert.True(crushed.Where(x => x.Bitrate == 0).SingleOrDefault() != null);
+            Assert.True(crushed.Where(x => x.Bitrate == 500).SingleOrDefault() != null);
+            Assert.Equal(2, crushed.Count());
+
+            // Test crush against lower tolerance
+            crushed = QualityCrusher.CrushQualities(testQualities, 1100);
+            Assert.True(crushed.Where(x => x.Bitrate == 0).SingleOrDefault() != null);
+            Assert.True(crushed.Where(x => x.Bitrate == 500).SingleOrDefault() != null);
+            Assert.Equal(2, crushed.Count());
+
+            // Test crush against upper tolerance
+            crushed = QualityCrusher.CrushQualities(testQualities, 1300);
+            Assert.True(crushed.Where(x => x.Bitrate == 0).SingleOrDefault() != null);
+            Assert.True(crushed.Where(x => x.Bitrate == 500).SingleOrDefault() != null);
+            Assert.Equal(2, crushed.Count());
+
+            // Test crush above upper tolerance
+            crushed = QualityCrusher.CrushQualities(testQualities, 1400);
+            Assert.True(crushed.Where(x => x.Bitrate == 0).SingleOrDefault() != null);
+            Assert.True(crushed.Where(x => x.Bitrate == 500).SingleOrDefault() != null);
+            Assert.True(crushed.Where(x => x.Bitrate == 1200).SingleOrDefault() != null);
+            Assert.Equal(3, crushed.Count());
+
+            // Test no crushing
+            crushed = QualityCrusher.CrushQualities(testQualities, 4000);
+            Assert.True(crushed.Where(x => x.Bitrate == 500).SingleOrDefault() != null);
+            Assert.True(crushed.Where(x => x.Bitrate == 1200).SingleOrDefault() != null);
+            Assert.True(crushed.Where(x => x.Bitrate == 2000).SingleOrDefault() != null);
+            Assert.Equal(3, crushed.Count());
+
+            // Test crush to bottom
+            crushed = QualityCrusher.CrushQualities(testQualities, 400);
+            Assert.True(crushed.Where(x => x.Bitrate == 0).SingleOrDefault() != null);
+            Assert.Single(crushed);
+        }
+
         internal void TestCleanup(Action<List<DashEncodeResult>> test)
         {
             var results = new List<DashEncodeResult>();
