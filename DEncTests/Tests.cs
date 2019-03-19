@@ -98,7 +98,7 @@ namespace DEncTests
                 Assert.NotNull(s.DashFilePath);
                 Assert.NotNull(s.DashFileContent);
                 Assert.NotNull(s.MediaFiles);
-                Assert.Equal(16, s.MediaFiles.Count());
+                Assert.Equal(15, s.MediaFiles.Count());
                 Assert.Contains("outputmulti1_audio_default_1_dashinit.mp4", s.MediaFiles);
                 Assert.Contains("outputmulti1_subtitle_eng_2.vtt", s.MediaFiles);
                 Assert.Contains("outputmulti1_subtitle_und_10.vtt", s.MediaFiles);
@@ -130,7 +130,7 @@ namespace DEncTests
                 Assert.NotNull(s.DashFilePath);
                 Assert.NotNull(s.DashFileContent);
                 Assert.NotNull(s.MediaFiles);
-                Assert.Equal("avc1.42C028", s.DashFileContent.Period[0].AdaptationSet[0].Representation[0].Codecs);
+                Assert.Equal("avc1.640028", s.DashFileContent.Period[0].AdaptationSet[0].Representation[0].Codecs);
                 Assert.True(s.DashFileContent.Period[0].AdaptationSet.Where(x => x.Lang == "jpn" && x.MaxFrameRate == null).SingleOrDefault().Representation.Count() == 1);
                 Assert.True(s.DashFileContent.Period[0].AdaptationSet.Where(x => x.Lang == "eng" && x.MaxFrameRate == null).SingleOrDefault().Representation.Count() == 2);
             });
