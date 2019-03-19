@@ -84,7 +84,7 @@ namespace DEncTests
                 c.EnableStreamCopying = true;
                 DashEncodeResult s = c.GenerateDash(
                     inFile: Path.Combine(runPath, "test5.mkv"),
-                    outFilename: "outputmulti#1",
+                    outFilename: "outputmulti#&*<>/?:\"1",
                     framerate: 30,
                     keyframeInterval: 90,
                     qualities: new List<Quality>

@@ -108,11 +108,15 @@ namespace DEnc
             {
                 throw new ArgumentOutOfRangeException("No qualitied specified. At least one quality is required.");
             }
-            if (outFilename.Contains("#"))
+
+            // Check for invalid characters and remove them.
+            outFilename = RemoveSymbols(outFilename, '#', '&', '*', '<', '>', '/', '?', ':', '"');
+            // Another check to ensure we didn't remove all the characters.
+            if (outFilename.Length == 0)
             {
-                stderrLog("outfilename contained an '#' symbol. MP4Box doesn't like that so it will be removed.");
-                outFilename = outFilename.Replace("#", "");
+                throw new ArgumentNullException("Output filename is null or empty.");
             }
+
             // Check bitrate distinction.
             if (qualities.GroupBy(x => x.Bitrate).Count() != qualities.Count())
             {
@@ -313,6 +317,27 @@ namespace DEnc
             {
                 ReportProgress(progress, progressList, postStage, 1);
             }
+        }
+
+        private string RemoveSymbols(string outFilename, params char[] symbols)
+        {
+            bool charsRemoved = false;
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in outFilename)
+            {
+                if (symbols.Contains(c))
+                {
+                    charsRemoved = true;
+                    continue;
+                }
+                sb.Append(c);
+            }
+            if (charsRemoved)
+            {
+                stderrLog($"outfilename contained one or more invalid characters, which were removed.");
+            }
+
+            return sb.ToString();
         }
 
         private static string GetSubtitleName(string vttFilename)
