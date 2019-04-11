@@ -157,9 +157,19 @@ namespace DEnc
 
         private static IEnumerable<StreamFile> BuildSubtitleCommands(IEnumerable<MediaStream> streams, string outDirectory, string outFilename)
         {
+            var supportedCodecs = new List<string>()
+            {
+                "webvtt",
+                "ass",
+                "mov_text",
+                "subrip",
+                "text"
+            };
+
             var output = new List<StreamFile>();
             foreach (var stream in streams)
             {
+                if (!supportedCodecs.Contains(stream.codec_name)) { continue; }
                 string language = stream.tag.Where(x => x.key == "language").Select(x => x.value).FirstOrDefault() ?? "und";
                 string path = Path.Combine(outDirectory, $"{outFilename}_subtitle_{language}_{stream.index}.vtt");
 
