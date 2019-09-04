@@ -73,7 +73,7 @@ namespace DEnc
         /// <summary>
         /// Converts the input file into an MPEG DASH representation with multiple bitrates.
         /// </summary>
-        /// <param name="inFile">The video file to convert.</param>
+        /// <param name="inFile">The video file to convert. Pass a full path if possible. Otherwise it will be rooted to the application working directory (not the working directory given to this instance).</param>
         /// <param name="outFilename">The base filename to use for the output files. Files will be overwritten if they exist.</param>
         /// <param name="framerate">Output video stream framerate. Pass zero to make this automatic based on the input file.</param>
         /// <param name="keyframeInterval">Output video keyframe interval. Pass zero to make this automatically 3x the framerate.</param>
@@ -108,6 +108,9 @@ namespace DEnc
             {
                 throw new ArgumentOutOfRangeException("No qualitied specified. At least one quality is required.");
             }
+
+            // Map input file to a full path if it's relative.
+            inFile = Path.GetFullPath(inFile);
 
             // Check for invalid characters and remove them.
             outFilename = RemoveSymbols(outFilename, '#', '&', '*', '<', '>', '/', '?', ':', '"');
