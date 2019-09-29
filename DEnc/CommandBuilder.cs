@@ -258,7 +258,7 @@ namespace DEnc
             var allCommands = videoCommand.Concat(audioCommand).Concat(subtitleCommand);
 
             var additionalFlags = options.AdditionalFlags ?? new List<string>();
-            string parameters = $"-i \"{inPath}\" -y -hide_banner {string.Join(" ", additionalFlags.Concat(allCommands.Select(x => x.Argument)))}";
+            string parameters = $"-i \"{inPath}\" -y -hide_banner\t{string.Join("\t", additionalFlags.Concat(allCommands.Select(x => x.Argument)))}";
 
             return new CommandBuildResult(parameters, allCommands);
         }
