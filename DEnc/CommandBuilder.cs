@@ -67,6 +67,38 @@ namespace DEnc
             new Codec("vp8", "webm", "webm")
         }.ToDictionary(x => x.Name);
 
+        private static bool CheckStreamValid(MediaStream stream)
+        {
+            if (stream == null) { return false; }
+
+            string taggedMimetype = null;
+            string taggedFilename = null;
+            string taggedBitsPerSecond = null;
+
+            if (stream.tag != null)
+            {
+                foreach (var tag in stream.tag)
+                {
+                    switch (tag.key.ToUpper())
+                    {
+                        case "BPS":
+                            taggedBitsPerSecond = tag.value;
+                            break;
+                        case "MIMETYPE":
+                            taggedMimetype = tag.value;
+                            break;
+                        case "FILENAME":
+                            taggedFilename = tag.value;
+                            break;
+                    }
+                }
+            }
+            if (taggedMimetype != null && taggedMimetype.ToUpper().StartsWith("IMAGE/")) { return false; }
+            if ((stream.bit_rate == 0 || (!string.IsNullOrWhiteSpace(taggedBitsPerSecond) && taggedBitsPerSecond != "0")) && stream.avg_frame_rate == "0/0") { return false; }
+
+            return true;
+        }
+
         private static IEnumerable<StreamFile> BuildVideoCommands(IEnumerable<MediaStream> streams, IEnumerable<IQuality> qualities, ICollection<string> additionalFlags, int framerate, int keyframeInterval, int defaultBitrate, bool enableStreamCopying, string outDirectory, string outFilename)
         {
             additionalFlags = additionalFlags ?? new List<string>();
@@ -95,6 +127,8 @@ namespace DEnc
             var output = new List<StreamFile>();
             foreach (var stream in streams)
             {
+                if (!CheckStreamValid(stream)) { continue; }
+
                 foreach (var quality in qualities)
                 {
                     string path = getFilename(outDirectory, outFilename, quality.Bitrate);
