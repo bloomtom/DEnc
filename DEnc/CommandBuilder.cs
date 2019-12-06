@@ -269,10 +269,15 @@ namespace DEnc
         /// <param name="inFiles">A collection of full paths to input files to encode from.</param>
         /// <param name="outFilePath">The full path to write the mpd file to.</param>
         /// <param name="keyInterval">The key interval in milliseconds. This can be derived from: (keyframeInterval / framerate) * 1000</param>
-        internal static CommandBuildResult BuildMp4boxMpdCommand(IEnumerable<string> inFiles, string outFilePath, int keyInterval)
+        /// <param name="flags">Additional flags to pass to MP4Box. Should include a profile</param>
+        internal static CommandBuildResult BuildMp4boxMpdCommand(IEnumerable<string> inFiles, string outFilePath, int keyInterval, ICollection<string> flags)
         {
-            string parameters = $"-dash {keyInterval} -quiet -rap -frag-rap -bs-switching no -subsegs-per-sidx 0 -sample-groups-traf" +
-                $" -profile dashavc264:onDemand -out \"{outFilePath}\" -- {string.Join(" ", inFiles.Select(x => '"' + x + '"'))}";
+            flags = flags ?? new List<string>();
+
+            flags.Add($"-dash {keyInterval}");
+            flags.Add($"-out \"{outFilePath}\"");
+
+            string parameters = $"{string.Join("\t", flags)}\t--\t{string.Join("\t", inFiles.Select(x => '"' + x + '"'))}";
             return new CommandBuildResult(parameters, new List<StreamFile>() { new StreamFile() { Path = outFilePath } });
         }
     }

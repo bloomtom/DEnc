@@ -19,5 +19,9 @@ namespace DEnc
         /// Additional flags to pass to the encoder for each video stream.
         /// </summary>
         ICollection<string> AdditionalVideoFlags { get; set; }
+        /// <summary>
+        /// Additional flags to pass to MP4Box to dashify the video file and generate a manifest.
+        /// </summary>
+        ICollection<string> AdditionalMP4BoxFlags { get; set; }
     }
 }

@@ -217,7 +217,8 @@ namespace DEnc
             var mp4boxCommand = CommandBuilder.BuildMp4boxMpdCommand(
                 inFiles: audioVideoFiles.Select(x => x.Path),
                 outFilePath: Path.Combine(outDirectory, outFilename) + ".mpd",
-                keyInterval: (keyframeInterval / framerate) * 1000);
+                keyInterval: (keyframeInterval / framerate) * 1000,
+                flags: options.AdditionalMP4BoxFlags);
 
             // Generate DASH files.
             ExecutionResult mpdResult;

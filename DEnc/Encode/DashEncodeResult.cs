@@ -29,7 +29,7 @@ namespace DEnc
         public string DashFilePath { get; protected set; }
 
         /// <summary>
-        /// Returns the list of media filenames from the DashFileContent. This operation scans the MPD object and isn't cached.
+        /// Returns the list of media filenames from the DashFileContent. This operation scans the MPD object and isn't cached. Does not return filenames when a live profile is used.
         /// </summary>
         public IEnumerable<string> MediaFiles => DashFileContent?.Period.SelectMany(x => x.AdaptationSet.SelectMany(y => y.Representation.SelectMany(z => z.BaseURL)));
 

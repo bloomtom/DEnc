@@ -137,6 +137,57 @@ namespace DEncTests
         }
 
         [Fact]
+        public void TestMP4BoxLiveProfile()
+        {
+            TestCleanup((results) =>
+            {
+                string runPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\");
+                string filename = "outputlive";
+                try
+                {
+                    IEnumerable<EncodeStageProgress> progress = null;
+                    var options = new H264EncodeOptions
+                    {
+                        AdditionalMP4BoxFlags = new List<string>()
+                        {
+                            "-profile \"dashavc264:live\"",
+                            "-bs-switching no"
+                        }
+                    };
+
+                    Encoder c = new Encoder();
+                    DashEncodeResult s = c.GenerateDash(
+                        options: options,
+                        inFile: Path.Combine(runPath, "testfile.ogg"),
+                        outFilename: filename,
+                        framerate: 30,
+                        keyframeInterval: 90,
+                        qualities: new List<Quality>
+                        {
+                        new Quality(1280, 720, 1280, "fast"),
+                        new Quality(640, 480, 768, "fast"),
+                        },
+                        outDirectory: runPath,
+                        progress: new NaiveProgress<IEnumerable<EncodeStageProgress>>(x => { progress = x; }));
+                    results.Add(s);
+
+                    Assert.NotNull(s.DashFilePath);
+                    Assert.NotNull(s.DashFileContent);
+                    Assert.Equal(1.0, progress.Where(x => x.Name == "Encode").Select(y => y.Progress).Single());
+                    Assert.Equal(1.0, progress.Where(x => x.Name == "DASHify").Select(y => y.Progress).Single());
+                    Assert.Equal(1.0, progress.Where(x => x.Name == "Post Process").Select(y => y.Progress).Single());
+                }
+                finally
+                {
+                    foreach (var file in Directory.EnumerateFiles(runPath, $"{filename}_*"))
+                    {
+                        File.Delete(Path.Combine(runPath, file));
+                    }
+                }
+            });
+        }
+
+        [Fact]
         public void TestFailOnDupQuality()
         {
             TestCleanup((results) =>
