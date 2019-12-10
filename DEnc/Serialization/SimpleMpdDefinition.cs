@@ -46,6 +46,10 @@ namespace DEnc.Serialization
         public AudioChannelConfiguration AudioChannelConfiguration { get; set; }
         [XmlAttribute(AttributeName = "audioSamplingRate")]
         public string AudioSamplingRate { get; set; }
+
+        [XmlElement(ElementName = "SegmentTemplate", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
+        public SegmentTemplate SegmentTemplate { get; set; }
+
     }
 
     [XmlRoot(ElementName = "Initialization", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
@@ -64,6 +68,25 @@ namespace DEnc.Serialization
         public string IndexRangeExact { get; set; }
         [XmlAttribute(AttributeName = "indexRange")]
         public string IndexRange { get; set; }
+    }
+
+    [XmlRoot(ElementName = "AdaptationSet", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
+    public class SegmentTemplate
+    {
+        [XmlAttribute(AttributeName = "media")]
+        public string Media { get; set; }
+
+        [XmlAttribute(AttributeName = "initialization")]
+        public string Initialization { get; set; }
+
+        [XmlAttribute(AttributeName = "timescale")]
+        public string Timescale { get; set; }
+
+        [XmlAttribute(AttributeName = "startNumber")]
+        public string StartNumber { get; set; }
+
+        [XmlAttribute(AttributeName = "duration")]
+        public string Duration { get; set; }
     }
 
     [XmlRoot(ElementName = "AdaptationSet", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
@@ -93,6 +116,10 @@ namespace DEnc.Serialization
         public string SubsegmentStartsWithSAP { get; set; }
         [XmlAttribute(AttributeName = "group")]
         public string Group { get; set; }
+        [XmlAttribute(AttributeName = "startWithSAP")]
+        public string StartWithSAP { get; set; }
+        [XmlElement(ElementName = "SegmentTemplate", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
+        public SegmentTemplate SegmentTemplate { get; set; }
     }
 
     [XmlRoot(ElementName = "AudioChannelConfiguration", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
