@@ -43,7 +43,7 @@ namespace DEnc.Serialization
         [XmlAttribute(AttributeName = "startWithSAP")]
         public string StartWithSAP { get; set; }
         [XmlElement(ElementName = "AudioChannelConfiguration", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
-        public AudioChannelConfiguration AudioChannelConfiguration { get; set; }
+        public DescriptorType AudioChannelConfiguration { get; set; }
         [XmlAttribute(AttributeName = "audioSamplingRate")]
         public string AudioSamplingRate { get; set; }
 
@@ -120,10 +120,12 @@ namespace DEnc.Serialization
         public string StartWithSAP { get; set; }
         [XmlElement(ElementName = "SegmentTemplate", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
         public SegmentTemplate SegmentTemplate { get; set; }
+        [XmlElement(ElementName = "Role", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
+        public DescriptorType Role { get; set; }
     }
 
     [XmlRoot(ElementName = "AudioChannelConfiguration", Namespace = "urn:mpeg:dash:schema:mpd:2011")]
-    public class AudioChannelConfiguration
+    public class DescriptorType
     {
         [XmlAttribute(AttributeName = "schemeIdUri")]
         public string SchemeIdUri { get; set; }

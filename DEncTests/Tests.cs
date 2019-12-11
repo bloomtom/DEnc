@@ -132,7 +132,7 @@ namespace DEncTests
                 Assert.NotNull(s.MediaFiles);
                 Assert.Equal("avc1.640028", s.DashFileContent.Period[0].AdaptationSet[0].Representation[0].Codecs);
                 Assert.True(s.DashFileContent.Period[0].AdaptationSet.Where(x => x.Lang == "jpn" && x.MaxFrameRate == null).SingleOrDefault().Representation.Count() == 1);
-                Assert.True(s.DashFileContent.Period[0].AdaptationSet.Where(x => x.Lang == "eng" && x.MaxFrameRate == null).SingleOrDefault().Representation.Count() == 2);
+                Assert.True(s.DashFileContent.Period[0].AdaptationSet.Where(x => x.Lang == "eng" && x.MaxFrameRate == null).Count() == 2);
             });
         }
 
