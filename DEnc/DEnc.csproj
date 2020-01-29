@@ -4,17 +4,20 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <Authors>bloomtom</Authors>
     <Description>A dotnet library for making encoding videos as MPEG DASH simple and straightforward.</Description>
-    <Copyright>MIT</Copyright>
-    <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
-    <Version>1.4.0</Version>
+    <Copyright></Copyright>
+    <Version>1.4.1</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>bloomtom.DEnc</PackageId>
     <PackageProjectUrl>https://github.com/bloomtom/DEnc</PackageProjectUrl>
     <RepositoryUrl>https://github.com/bloomtom/DEnc</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+	<PublishRepositoryUrl>true</PublishRepositoryUrl>
+	<EmbedUntrackedSources>true</EmbedUntrackedSources>
+	<IncludeSymbols>true</IncludeSymbols>
+	<SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <FileVersion>1.4.0.0</FileVersion>
     <AssemblyVersion>1.4.0.0</AssemblyVersion>
-	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -24,5 +27,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DocumentationFile>bin\Debug\netstandard2.0\DEnc.xml</DocumentationFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
 
 </Project>
