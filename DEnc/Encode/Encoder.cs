@@ -113,7 +113,7 @@ namespace DEnc
             inFile = Path.GetFullPath(inFile);
 
             // Check for invalid characters and remove them.
-            outFilename = RemoveSymbols(outFilename, '#', '&', '*', '<', '>', '/', '?', ':', '"');
+            outFilename = RemoveSymbols(outFilename, '#', '&', '*', '<', '>', '/', '?', ':', '"', '%');
             // Another check to ensure we didn't remove all the characters.
             if (outFilename.Length == 0)
             {
