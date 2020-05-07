@@ -6,7 +6,8 @@ using System.Text;
 
 namespace DEnc
 {
-    public static class Constants
+
+    internal static class Constants
     {
         internal static IReadOnlyDictionary<string, Codec> SupportedCodecs { get; } = new Dictionary<string, Codec>()
         {
