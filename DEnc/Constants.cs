@@ -16,5 +16,14 @@ namespace DEnc
             ["h264"] = new Codec("h264", "mp4", "mp4"),
             ["vp8"] = new Codec("vp8", "webm", "webm")
         };
+
+        internal static HashSet<string> SupportedSubtitleCodecs { get; } = new HashSet<string>()
+        {
+            "webvtt",
+            "ass",
+            "mov_text",
+            "subrip",
+            "text"
+        };
     }
 }
