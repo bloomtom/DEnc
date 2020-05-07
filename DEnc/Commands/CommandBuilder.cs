@@ -1,61 +1,12 @@
 ﻿using DEnc.Serialization;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace DEnc
+namespace DEnc.Commands
 {
-    internal enum StreamType
-    {
-        Video,
-        Audio,
-        Subtitle,
-        MPD
-    }
-
-    internal class CommandBuildResult
-    {
-        public string RenderedCommand { get; private set; }
-        public IEnumerable<StreamFile> CommandPieces { get; private set; }
-
-        internal CommandBuildResult(string commandArguments, IEnumerable<StreamFile> commands)
-        {
-            RenderedCommand = commandArguments;
-            CommandPieces = commands;
-        }
-    }
-
-    internal class StreamFile
-    {
-        public StreamType Type { get; set; }
-        public int Origin { get; set; }
-        public string Name { get; set; }
-        public string Path { get; set; }
-        public string Argument { get; set; }
-    }
-
-    internal class Codec
-    {
-        public string Name { get; private set; }
-        public string Container { get; private set; }
-        public string Extension { get; private set; }
-
-        public Codec(string name, string container, string extension)
-        {
-            Name = name;
-            Container = container;
-            Extension = extension;
-        }
-
-        public override string ToString()
-        {
-            return Name;
-        }
-    }
-
     internal static class CommandBuilder
     {
         public static IReadOnlyDictionary<string, Codec> SupportedCodecs { get; } = new List<Codec>()
@@ -110,7 +61,10 @@ namespace DEnc
             var getProfileLevel = new Func<string, string>(x => { return (string.IsNullOrEmpty(x)) ? "" : $"-level {x}"; });
             var getPixelFormat = new Func<string, string>(x => { return (string.IsNullOrEmpty(x)) ? "" : $"-pix_fmt {x}"; });
             var getFramerate = new Func<int, string>(x => { return (x == 0) ? "" : $"-r {x}"; });
-            var getFilename = new Func<string, string, int, string>((path, filename, bitrate) => { return Path.Combine(path, $"{filename}_{(bitrate == 0 ? "original" : bitrate.ToString())}.mp4"); });
+            var getFilename = new Func<string, string, int, string>((path, filename, bitrate) =>
+            {
+                return Path.Combine(path, $"{filename}_{(bitrate == 0 ? "original" : bitrate.ToString())}.mp4");
+            });
 
             var getVideoCodec = new Func<string, bool, int, string>((sourceCodec, enableCopy, keyInterval) =>
             {
@@ -125,18 +79,18 @@ namespace DEnc
             });
 
             var output = new List<StreamFile>();
-            foreach (var stream in streams)
+            foreach (MediaStream stream in streams)
             {
                 if (!CheckStreamValid(stream)) { continue; }
 
-                foreach (var quality in qualities)
+                foreach (IQuality quality in qualities)
                 {
                     string path = getFilename(outDirectory, outFilename, quality.Bitrate);
                     bool copyThisStream = enableStreamCopying && quality.Bitrate == 0;
                     var command = new StreamFile
                     {
                         Type = StreamType.Video,
-                        Origin = stream.index,
+                        Index = stream.index,
                         Name = quality.Bitrate.ToString(),
                         Path = path,
                         Argument = $"-map 0:{stream.index} " + string.Join(" ", additionalFlags.Concat(new string[]
@@ -171,11 +125,11 @@ namespace DEnc
                 string title = stream.tag.Where(x => x.key == "title").Select(x => x.value).FirstOrDefault() ?? stream.index.ToString();
                 string path = Path.Combine(outDirectory, $"{outFilename}_audio_{language}_{stream.index}.mp4");
                 string codec = codecSupported ? "" : $"-c:a aac -b:a {stream.bit_rate * 1.1}";
-                
+
                 var command = new StreamFile
                 {
                     Type = StreamType.Audio,
-                    Origin = stream.index,
+                    Index = stream.index,
                     Name = $"{language} {title}",
                     Path = path,
                     Argument = $"-map 0:{stream.index} " + string.Join(" ", additionalFlags.Concat(new string[]
@@ -211,7 +165,7 @@ namespace DEnc
                 var command = new StreamFile
                 {
                     Type = StreamType.Subtitle,
-                    Origin = stream.index,
+                    Index = stream.index,
                     Name = language,
                     Path = path,
                     Argument = string.Join(" ", new string[]
