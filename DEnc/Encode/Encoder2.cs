@@ -69,6 +69,30 @@ namespace DEnc
             {
                 throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
             }
+
+            if(Environment.GetEnvironmentVariable(ffmpegPath) is null)
+            {
+                if (!File.Exists(ffmpegPath))
+                {
+                    throw new FileNotFoundException("The given path for ffmpegPath does not exist");
+                }
+            }
+
+            if (Environment.GetEnvironmentVariable(ffprobePath) is null)
+            {
+                if (!File.Exists(ffprobePath))
+                {
+                    throw new FileNotFoundException("The given path for ffprobePath does not exist");
+                }
+            }
+
+            if (Environment.GetEnvironmentVariable(boxPath) is null)
+            {
+                if (!File.Exists(boxPath))
+                {
+                    throw new FileNotFoundException("The given path for boxPath does not exist");
+                }
+            }
         }
 
         /// <summary>
