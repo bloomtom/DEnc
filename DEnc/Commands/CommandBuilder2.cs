@@ -15,7 +15,7 @@ namespace DEnc.Commands
         bool enableStreamCopying;
 
         List<StreamVideoFile> videoFiles;
-        List<StreamFile> audioFiles;
+        List<StreamAudioFile> audioFiles;
         List<StreamFile> subtitleFiles;
 
         internal static ICommandBuilder Initilize(string inPath, string outDirectory, string outBaseFilename, bool enableStreamCopying)
@@ -77,9 +77,20 @@ namespace DEnc.Commands
             return this;
         } 
 
-        public ICommandBuilder WithAudioCommands()
+        public ICommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams, ICollection<string> additionalFlags)
         {
-            throw new NotImplementedException();
+            foreach (MediaStream audioStream in streams)
+            {
+                IAudioCommandBuilder builder = AudioCommandBuilder.Initilize(audioStream, outputDirectory, outputBaseFilename, additionalFlags);
+                StreamAudioFile streamFile = builder
+                    .WithLanguage()
+                    .WithTitle()
+                    .WithCodec()
+                    .Build();
+
+                audioFiles.Add(streamFile);
+            }
+            return this;
         }
 
         public ICommandBuilder WithSubtitleCommands()
@@ -229,10 +240,101 @@ namespace DEnc.Commands
         }
     }
 
+    internal class AudioCommandBuilder : IAudioCommandBuilder
+    {
+        List<string> commands;
+
+        MediaStream audioStream;
+        string outputDirectory;
+        string outputBaseFilename;
+        bool codecSupported;
+
+        string path;
+        string language;
+        string title;
+
+        public static IAudioCommandBuilder Initilize(MediaStream audioStream, string outputDirectory, string outputBaseFilename, ICollection<string> additionalFlags)
+        {
+            IAudioCommandBuilder builder = new AudioCommandBuilder(audioStream, outputDirectory, outputBaseFilename, additionalFlags);
+            return builder;
+        }
+
+        private AudioCommandBuilder(MediaStream audioStream, string outputDirectory, string outputBaseFilename, ICollection<string> additionalFlags)
+        {
+            this.audioStream = audioStream;
+            this.outputDirectory = outputDirectory;
+            this.outputBaseFilename = outputBaseFilename;
+            commands = new List<string>();
+
+            codecSupported = Constants.SupportedCodecs.ContainsKey(audioStream.codec_name);
+
+            commands.Add($"-map 0:{audioStream.index}");
+            if (additionalFlags != null && additionalFlags.Any())
+            {
+                commands.AddRange(additionalFlags);
+            }
+        }
+
+        public StreamAudioFile Build()
+        {
+            path = Path.Combine(outputDirectory, $"{outputBaseFilename}_audio_{language}_{audioStream.index}.mp4");
+            commands.Add($"\"{path}\"");
+
+            return new StreamAudioFile
+            {
+                Type = StreamType.Audio,
+                Index = audioStream.index,
+                Name = $"{language} {title}",
+                Path = path,
+                Argument = string.Join(" ", commands)
+            };
+        }
+
+        public IAudioCommandBuilder WithLanguage()
+        {
+            string language = audioStream.tag
+                .Where(x => x.key == "language")
+                .Select(x => x.value)
+                .FirstOrDefault();
+
+            if(language is null)
+            {
+                language = audioStream.disposition.@default > 0 ? "default" : "und";
+            }
+            this.language = language;
+            return this;
+        }
+
+        public IAudioCommandBuilder WithTitle()
+        {
+            string title = audioStream.tag
+                .Where(x => x.key == "title")
+                .Select(x => x.value)
+                .FirstOrDefault();
+
+            if(title is null)
+            {
+                title = audioStream.index.ToString();
+            }
+            this.title = title;
+            return this;
+        }
+
+        public IAudioCommandBuilder WithCodec()
+        {
+            if (codecSupported)
+            {
+                return this;
+            }
+            commands.Add($"-c:a aac -b:a {audioStream.bit_rate * 1.1}");
+            return this;
+        }
+    }
+
     internal interface ICommandBuilder
     {
         ICommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, ICollection<string> additionalFlags, int framerate, int keyframeInterval, int defaultBitrate);
-        ICommandBuilder WithAudioCommands();
+        ICommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams, ICollection<string> additionalFlags);
         ICommandBuilder WithSubtitleCommands();
     }
 
@@ -248,5 +350,14 @@ namespace DEnc.Commands
         IVideoCommandBuilder WithPixelFormat(string format);
         IVideoCommandBuilder WithFramerate(int framerate);
         IVideoCommandBuilder WithVideoCodec(string sourceCodec, int keyInterval, bool enableCopy);
+    }
+
+    internal interface IAudioCommandBuilder
+    {
+        StreamAudioFile Build();
+        IAudioCommandBuilder WithLanguage();
+        IAudioCommandBuilder WithTitle();
+        IAudioCommandBuilder WithCodec();
+
     }
 }
