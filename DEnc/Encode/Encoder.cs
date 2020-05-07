@@ -6,6 +6,7 @@ using System.IO;
 using System.Diagnostics;
 using DEnc.Serialization;
 using System.Threading;
+using DEnc.Commands;
 
 namespace DEnc
 {
@@ -266,7 +267,7 @@ namespace DEnc
                 }
             }
             // Add external subtitles
-            int originIndex = ffmpegCommand.CommandPieces.Max(x => x.Origin) + 1;
+            int originIndex = ffmpegCommand.CommandPieces.Max(x => x.Index) + 1;
             string baseFilename = Path.GetFileNameWithoutExtension(inFile);
             foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(inFile), baseFilename + "*", SearchOption.TopDirectoryOnly))
             {
@@ -279,7 +280,7 @@ namespace DEnc
                     var subFile = new StreamFile()
                     {
                         Type = StreamType.Subtitle,
-                        Origin = originIndex,
+                        Index = originIndex,
                         Path = vttOutputPath,
                         Name = $"{vttName}_{originIndex}"
                     };
