@@ -101,6 +101,11 @@ namespace DEnc.Commands
 
         public ICommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams)
         {
+            if (!streams.Any())
+            {
+                return this;
+            }
+
             foreach (MediaStream audioStream in streams)
             {
                 IAudioCommandBuilder builder = AudioCommandBuilder.Initilize(audioStream, outputDirectory, outputBaseFilename, AdditionalAudioFlags);
@@ -117,6 +122,11 @@ namespace DEnc.Commands
 
         public ICommandBuilder WithSubtitleCommands(IEnumerable<MediaStream> streams)
         {
+            if (!streams.Any())
+            {
+                return this;
+            }
+
             foreach (MediaStream subtitleStream in streams)
             {
                 if (!Constants.SupportedSubtitleCodecs.Contains(subtitleStream.codec_name))
