@@ -5,9 +5,9 @@ using System.Text;
 
 namespace DEnc.Commands
 {
-    internal class CommandBuildResult2
+    internal class FfmpegRenderedCommand
     {
-        internal CommandBuildResult2(string commandArguments, IEnumerable<StreamVideoFile> videoPieces, IEnumerable<StreamAudioFile> audioPieces, IEnumerable<StreamSubtitleFile> subtitlePieces)
+        internal FfmpegRenderedCommand(string commandArguments, IEnumerable<StreamVideoFile> videoPieces, IEnumerable<StreamAudioFile> audioPieces, IEnumerable<StreamSubtitleFile> subtitlePieces)
         {
             RenderedCommand = commandArguments;
             VideoPieces = videoPieces;

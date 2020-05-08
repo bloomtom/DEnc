@@ -41,7 +41,7 @@ namespace DEnc.Commands
             return builder;
         }
 
-        public CommandBuildResult2 Build()
+        public FfmpegRenderedCommand Build()
         {
 
             var additionalFlags = AdditionalFlags ?? new List<string>();
@@ -56,7 +56,7 @@ namespace DEnc.Commands
 
             string parameters = String.Join("\t", allCommands);
 
-            return new CommandBuildResult2(parameters, videoFiles, audioFiles, subtitleFiles);
+            return new FfmpegRenderedCommand(parameters, videoFiles, audioFiles, subtitleFiles);
         }
 
         public IFFmpegCommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate)
@@ -394,7 +394,7 @@ namespace DEnc.Commands
 
     internal interface IFFmpegCommandBuilder
     {
-        CommandBuildResult2 Build();
+        FfmpegRenderedCommand Build();
         IFFmpegCommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate);
         IFFmpegCommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams);
         IFFmpegCommandBuilder WithSubtitleCommands(IEnumerable<MediaStream> streams);

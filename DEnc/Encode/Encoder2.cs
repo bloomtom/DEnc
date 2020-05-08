@@ -233,7 +233,7 @@ namespace DEnc
 
         private bool EncodeVideo(DashConfig config, MediaMetadata inputStats, int inputBitrate, bool enableStreamCopying, CancellationToken cancel)
         {
-            CommandBuildResult2 ffmpegCommand = FFmpegCommandBuilder 
+            FfmpegRenderedCommand ffmpegCommand = FFmpegCommandBuilder 
                 .Initilize(
                     inPath: config.InputFilePath,
                     outDirectory: config.OutputDirectory,
