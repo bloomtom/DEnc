@@ -26,5 +26,10 @@ namespace DEnc
             "subrip",
             "text"
         };
+
+        internal static HashSet<string> IllegalFilesystemChars = new HashSet<string>
+        {
+            "#", "&", "*", "<", ">", "/", "?", ":", "\"", "%"
+        };
     }
 }
