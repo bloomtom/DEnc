@@ -161,7 +161,7 @@ namespace DEnc
             MediaMetadata inputStats;
             IQuality compareQuality;
             int inputBitrate;
-            bool enableStreamCopy;
+            bool enableStreamCopy = false;
 
             inputStats = ProbeFile(config.InputFilePath);
             if (inputStats == null) { throw new NullReferenceException("ffprobe query returned a null result."); }
@@ -191,7 +191,7 @@ namespace DEnc
                 config.KeyframeInterval = config.Framerate * 3;
             }
 
-            //TODO: Sort out a cleared way to log
+            //TODO: Sort out a cleared way to provde progress
             /*
             var progressList = new List<EncodeStageProgress>()
             {
@@ -220,10 +220,66 @@ namespace DEnc
                 });
             }*/
 
+            cancel.ThrowIfCancellationRequested();
+            bool success = EncodeVideo(config, inputStats, inputBitrate, enableStreamCopy, cancel);
+            if (!success)
+            {
+                return null;
+            }
+
             throw new NotImplementedException();
 
         }
 
+        private bool EncodeVideo(DashConfig config, MediaMetadata inputStats, int inputBitrate, bool enableStreamCopying, CancellationToken cancel)
+        {
+            CommandBuildResult2 ffmpegCommand = CommandBuilder2 
+                .Initilize(
+                    inPath: config.InputFilePath,
+                    outDirectory: config.OutputDirectory,
+                    outBaseFilename: config.OutputFileName,
+                    options: config.Options,
+                    enableStreamCopying: enableStreamCopying
+                 )
+                .WithVideoCommands(inputStats.VideoStreams, config.Qualities, config.Framerate, config.KeyframeInterval, inputBitrate)
+                .WithAudioCommands(inputStats.AudioStreams)
+                .WithSubtitleCommands(inputStats.SubtitleStreams)
+                .Build();
+
+            // Generate intermediates
+            try
+            {
+                ExecutionResult ffResult;
+                stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.RenderedCommand}");
+                ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, stderrLog, cancel); //TODO: Use a better log/error callback mechanism? Also use a better progress mechanism
+
+                // Detect error in ffmpeg process and cleanup, then return null.
+                if (ffResult.ExitCode != 0)
+                {
+                    stderrLog.Invoke($"ERROR: ffmpeg returned code {ffResult.ExitCode}. File: {config.InputFilePath}");
+                    CleanOutputFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                CleanOutputFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
+
+                if (ex is OperationCanceledException)
+                {
+                    throw new OperationCanceledException($"Exception running ffmpeg on {config.InputFilePath}", ex);
+                }
+                else
+                {
+                    throw new Exception($"Exception running ffmpeg on {config.InputFilePath}", ex);
+                }
+            }
+
+
+            var audioVideoFiles = ffmpegCommand.CommandPieces.Where(x => x.Type == StreamType.Video || x.Type == StreamType.Audio);
+
+            return true;
+        }
 
         /// <summary>
         /// Converts the input file into an MPEG DASH representation with multiple bitrates.
