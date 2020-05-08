@@ -221,17 +221,32 @@ namespace DEnc
             }*/
 
             cancel.ThrowIfCancellationRequested();
-            bool success = EncodeVideo(config, inputStats, inputBitrate, enableStreamCopy, cancel);
-            if (!success)
+            FfmpegRenderedCommand ffmpgCommand = EncodeVideo(config, inputStats, inputBitrate, enableStreamCopy, cancel);
+            if (ffmpgCommand is null)
             {
                 return null;
             }
+
+            Mp4BoxRenderedCommand mp4BoxCommand = GenerateDashManifest(config, ffmpgCommand.VideoPieces, ffmpgCommand.AudioPieces, cancel);
+            if (mp4BoxCommand is null)
+            {
+                return null;
+            }
+
+            //ReportProgress(progress, progressList, dashStage, 1);
+            //ReportProgress(progress, progressList, postStage, 0.3
+
+            int maxFileIndex = ffmpgCommand.AllPieces.Max(x => x.Index);
+            List<StreamSubtitleFile> allSubtitles = ProcessSubtitles(config, ffmpgCommand.SubtitlePieces, maxFileIndex + 1);
+
+            //ReportProgress(progress, progressList, postStage, 0.66);
+
 
             throw new NotImplementedException();
 
         }
 
-        private bool EncodeVideo(DashConfig config, MediaMetadata inputStats, int inputBitrate, bool enableStreamCopying, CancellationToken cancel)
+        private FfmpegRenderedCommand EncodeVideo(DashConfig config, MediaMetadata inputStats, int inputBitrate, bool enableStreamCopying, CancellationToken cancel)
         {
             FfmpegRenderedCommand ffmpegCommand = FFmpegCommandBuilder 
                 .Initilize(
@@ -258,7 +273,7 @@ namespace DEnc
                 {
                     stderrLog.Invoke($"ERROR: ffmpeg returned code {ffResult.ExitCode}. File: {config.InputFilePath}");
                     CleanOutputFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
-                    return false;
+                    return null;
                 }
             }
             catch (Exception ex)
@@ -275,10 +290,101 @@ namespace DEnc
                 }
             }
 
+            return ffmpegCommand;
+        }
 
-            var audioVideoFiles = ffmpegCommand.CommandPieces.Where(x => x.Type == StreamType.Video || x.Type == StreamType.Audio);
+        private Mp4BoxRenderedCommand GenerateDashManifest(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles, CancellationToken cancel)
+        {
+            string outputPath = Path.Combine(config.OutputDirectory, config.OutputFileName) + ".mpd";
+            var mp4boxCommand = Mp4BoxCommandBuilder.BuildMp4boxMpdCommand(
+                videoFiles: videoFiles,
+                audioFiles: audioFiles,
+                outFilePath: outputPath,
+                keyInterval: (config.KeyframeInterval / config.Framerate) * 1000,
+                additionalFlags: config.Options.AdditionalMP4BoxFlags);
 
-            return true;
+            // Generate DASH files.
+            ExecutionResult mpdResult;
+            stderrLog.Invoke($"Running MP4Box with arguments: {mp4boxCommand.RenderedCommand}");
+            try
+            {
+                mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog, cancel);
+                
+                // Dash Failed TODO: Add in Progress report behavior that was excluded from this
+                if (mpdResult.ExitCode != 0)
+                {
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex is OperationCanceledException)
+                {
+                    throw new OperationCanceledException($"Exception running MP4box on {config.InputFilePath}", ex);
+                }
+                else
+                {
+                    throw new Exception($"Exception running MP4box on {config.InputFilePath}", ex);
+                }
+            }
+            finally
+            {
+                CleanOutputFiles(videoFiles.Select(x => x.Path));
+                CleanOutputFiles(audioFiles.Select(x => x.Path));
+            }
+
+            return mp4boxCommand;
+        }
+
+        /// <summary>
+        /// Processes the media subtitles and finds and handles external subtitle files
+        /// </summary>
+        /// <param name="config">The <see cref="DashConfig"/></param>
+        /// <param name="subtitleFiles">The subtitle stream files</param>
+        /// <param name="startFileIndex">The index additional subtitles need to start at. This should be the max index of the ffmpeg pieces +1</param>
+        private List<StreamSubtitleFile> ProcessSubtitles(DashConfig config, IEnumerable<StreamSubtitleFile> subtitleFiles, int startFileIndex)
+        {
+            // Move subtitles found in media
+            List<StreamSubtitleFile> subtitles = new List<StreamSubtitleFile>();
+            foreach (var subFile in subtitleFiles)
+            {
+                string oldPath = subFile.Path;
+                subFile.Path = Path.Combine(config.OutputDirectory, Path.GetFileName(subFile.Path));
+                subtitles.Add(subFile);
+                if (oldPath != subFile.Path)
+                {
+                    if (File.Exists(subFile.Path)) 
+                    { 
+                        File.Delete(subFile.Path); 
+                    }
+                    File.Move(oldPath, subFile.Path);
+                }
+            }
+
+            // Add external subtitles
+            string baseFilename = Path.GetFileNameWithoutExtension(config.InputFilePath);
+            foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(config.InputFilePath), baseFilename + "*", SearchOption.TopDirectoryOnly))
+            {
+                if (vttFile.EndsWith(".vtt"))
+                {
+                    string vttFilename = Path.GetFileName(vttFile);
+                    string vttName = GetSubtitleName(vttFilename);
+                    string vttOutputPath = Path.Combine(config.OutputDirectory, $"{config.OutputFileName}_subtitle_{vttName}_{startFileIndex}.vtt");
+
+                    var subFile = new StreamSubtitleFile()
+                    {
+                        Type = StreamType.Subtitle,
+                        Index = startFileIndex,
+                        Path = vttOutputPath,
+                        Language = $"{vttName}_{startFileIndex}"
+                    };
+                    startFileIndex++;
+                    File.Copy(vttFile, vttOutputPath, true);
+                    subtitles.Add(subFile);
+                }
+            }
+
+            return subtitles;
         }
 
         /// <summary>
