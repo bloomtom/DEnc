@@ -10,6 +10,58 @@ using DEnc.Commands;
 
 namespace DEnc
 {
+
+    public class DashConfig
+    {
+        public DashConfig(string inputFilePath, string outputDirectory, IEnumerable<IQuality> qualities, string outputFileName = null)
+        {
+            if (inputFilePath == null || !File.Exists(inputFilePath))
+            {
+                throw new FileNotFoundException("Input path does not exist.");
+            }
+
+            if (!Directory.Exists(outputDirectory))
+            {
+                throw new DirectoryNotFoundException("Output directory does not exist.");
+            }
+
+            if (qualities == null || qualities.Count() == 0)
+            {
+                throw new ArgumentOutOfRangeException("No qualitied specified. At least one quality is required.");
+            }
+
+            if (Qualities.GroupBy(x => x.Bitrate).Count() != Qualities.Count())
+            {
+                throw new ArgumentOutOfRangeException("Duplicate quality bitrates found. Bitrates must be distinct.");
+            }
+
+            Qualities = qualities;
+            InputFilePath = Path.GetFullPath(inputFilePath);  // Map input file to a full path if it's relative.
+            OutputDirectory = outputDirectory;
+
+            if (outputFileName != null)
+            {
+                OutputFileName = Utilities.CleanFileName(outputFileName);
+                if(OutputFileName.Length == 0)
+                {
+                    throw new ArgumentNullException("Output filename is null or empty after removal of illegal characters.");
+                }
+            } 
+            else
+            {
+                OutputFileName = Path.GetFileName(inputFilePath);
+            }
+        }
+
+        public string InputFilePath { get; }
+        public string OutputDirectory { get; }
+        public IEnumerable<IQuality> Qualities { get; internal set; }
+        public string OutputFileName { get; }
+        public int Framerate { get; set; } = 0;
+        public int KeyframeInterval { get; set; } = 0;
+        public IEncodeOptions Options { get; set; } = new H264EncodeOptions();
+    }
+
     /// <summary>
     /// A construct for performing encode functions.
     /// </summary>
@@ -65,35 +117,113 @@ namespace DEnc
             this.stdoutLog = stdoutLog ?? new Action<string>((s) => { });
             this.stderrLog = stderrLog ?? new Action<string>((s) => { });
 
+            ValidateTempAndExesExist();
+        }
+
+        private void ValidateTempAndExesExist()
+        {
             if (!Directory.Exists(WorkingDirectory))
             {
                 throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
             }
 
-            if(Environment.GetEnvironmentVariable(ffmpegPath) is null)
+            if (Environment.GetEnvironmentVariable(FFmpegPath) is null)
             {
-                if (!File.Exists(ffmpegPath))
+                if (!File.Exists(FFmpegPath))
                 {
                     throw new FileNotFoundException("The given path for ffmpegPath does not exist");
                 }
             }
 
-            if (Environment.GetEnvironmentVariable(ffprobePath) is null)
+            if (Environment.GetEnvironmentVariable(FFprobePath) is null)
             {
-                if (!File.Exists(ffprobePath))
+                if (!File.Exists(FFprobePath))
                 {
                     throw new FileNotFoundException("The given path for ffprobePath does not exist");
                 }
             }
 
-            if (Environment.GetEnvironmentVariable(boxPath) is null)
+            if (Environment.GetEnvironmentVariable(BoxPath) is null)
             {
-                if (!File.Exists(boxPath))
+                if (!File.Exists(BoxPath))
                 {
                     throw new FileNotFoundException("The given path for boxPath does not exist");
                 }
             }
         }
+
+        private async Task<DashEncodeResult> GenerateDash(DashConfig config, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
+        {
+            cancel.ThrowIfCancellationRequested();
+            ValidateTempAndExesExist();
+
+            //Field declarations
+            MediaMetadata inputStats;
+            IQuality compareQuality;
+            int inputBitrate;
+            bool enableStreamCopy;
+
+            inputStats = ProbeFile(config.InputFilePath);
+            if (inputStats == null) { throw new NullReferenceException("ffprobe query returned a null result."); }
+
+            inputBitrate = (int)(inputStats.Bitrate / 1024);
+            if (!DisableQualityCrushing)
+            {
+                config.Qualities = QualityCrusher.CrushQualities(config.Qualities, inputBitrate);
+            }
+            compareQuality = config.Qualities.First();
+
+
+            if (EnableStreamCopying && compareQuality.Bitrate == 0)
+            {
+                enableStreamCopy = Copyable264Infer.DetermineCopyCanBeDone(compareQuality.PixelFormat, compareQuality.Level, compareQuality.Profile, inputStats.VideoStreams);
+            }
+
+            // Set the framerate interval to match input if user has not already set
+            if (config.Framerate <= 0)
+            {
+                config.Framerate = (int)Math.Round(inputStats.Framerate);
+            }
+
+            // Set the keyframe interval to match input if user has not already set
+            if (config.KeyframeInterval <= 0)
+            {
+                config.KeyframeInterval = config.Framerate * 3;
+            }
+
+            //TODO: Sort out a cleared way to log
+            /*
+            var progressList = new List<EncodeStageProgress>()
+            {
+                new EncodeStageProgress("Encode", 0),
+                new EncodeStageProgress("DASHify", 0),
+                new EncodeStageProgress("Post Process", 0)
+            };
+            const int encodeStage = 0;
+            const int dashStage = 1;
+            const int postStage = 2;
+
+            var stdErrShim = stderrLog;
+            if (progress != null)
+            {
+                stdErrShim = new Action<string>(x =>
+                {
+                    stderrLog(x);
+                    if (x != null)
+                    {
+                        var match = Encode.Regexes.ParseProgress.Match(x);
+                        if (match.Success && TimeSpan.TryParse(match.Value, out TimeSpan p))
+                        {
+                            ReportProgress(progress, progressList, encodeStage, Math.Min(1, (float)(p.TotalMilliseconds / 1000) / inputStats.Duration));
+                        }
+                    }
+                });
+            }*/
+
+            throw new NotImplementedException();
+
+        }
+
 
         /// <summary>
         /// Converts the input file into an MPEG DASH representation with multiple bitrates.
