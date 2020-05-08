@@ -7,7 +7,7 @@ using System.Text;
 
 namespace DEnc.Commands
 {
-    internal class CommandBuilder2 : ICommandBuilder
+    internal class FFmpegCommandBuilder : IFFmpegCommandBuilder
     {
         string inputPath;
         string outputDirectory;
@@ -19,7 +19,7 @@ namespace DEnc.Commands
         List<StreamAudioFile> audioFiles;
         List<StreamSubtitleFile> subtitleFiles;
 
-        private CommandBuilder2(string inPath, string outDirectory, string outBaseFilename, IEncodeOptions options, bool enableStreamCopying)
+        private FFmpegCommandBuilder(string inPath, string outDirectory, string outBaseFilename, IEncodeOptions options, bool enableStreamCopying)
         {
             inputPath = inPath;
             outputDirectory = outDirectory;
@@ -35,9 +35,9 @@ namespace DEnc.Commands
         private ICollection<string> AdditionalAudioFlags => options?.AdditionalAudioFlags;
         private ICollection<string> AdditionalFlags => options?.AdditionalFlags;
 
-        internal static ICommandBuilder Initilize(string inPath, string outDirectory, string outBaseFilename, IEncodeOptions options, bool enableStreamCopying)
+        internal static IFFmpegCommandBuilder Initilize(string inPath, string outDirectory, string outBaseFilename, IEncodeOptions options, bool enableStreamCopying)
         {
-            ICommandBuilder builder = new CommandBuilder2(inPath, outDirectory, outBaseFilename, options, enableStreamCopying);
+            IFFmpegCommandBuilder builder = new FFmpegCommandBuilder(inPath, outDirectory, outBaseFilename, options, enableStreamCopying);
             return builder;
         }
 
@@ -59,7 +59,7 @@ namespace DEnc.Commands
             return new CommandBuildResult2(parameters, videoFiles, audioFiles, subtitleFiles);
         }
 
-        public ICommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate)
+        public IFFmpegCommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate)
         {
             // TODO: TEMP(ish) for now, ideally the caller could call all the appropriate builder methods
             foreach (MediaStream video in videoStreams)
@@ -99,7 +99,7 @@ namespace DEnc.Commands
             return this;
         } 
 
-        public ICommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams)
+        public IFFmpegCommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams)
         {
             if (!streams.Any())
             {
@@ -120,7 +120,7 @@ namespace DEnc.Commands
             return this;
         }
 
-        public ICommandBuilder WithSubtitleCommands(IEnumerable<MediaStream> streams)
+        public IFFmpegCommandBuilder WithSubtitleCommands(IEnumerable<MediaStream> streams)
         {
             if (!streams.Any())
             {
@@ -392,12 +392,12 @@ namespace DEnc.Commands
         }
     }
 
-    internal interface ICommandBuilder
+    internal interface IFFmpegCommandBuilder
     {
         CommandBuildResult2 Build();
-        ICommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate);
-        ICommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams);
-        ICommandBuilder WithSubtitleCommands(IEnumerable<MediaStream> streams);
+        IFFmpegCommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate);
+        IFFmpegCommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams);
+        IFFmpegCommandBuilder WithSubtitleCommands(IEnumerable<MediaStream> streams);
     }
 
     internal interface IVideoCommandBuilder
