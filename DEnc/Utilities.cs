@@ -1,11 +1,12 @@
 ﻿using DEnc.Serialization;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace DEnc
 {
-    public static class Extensions
+    public static class Utilities
     {
         public static bool IsStreamValid(this MediaStream stream)
         {
@@ -37,6 +38,21 @@ namespace DEnc
             if ((stream.bit_rate == 0 || (!string.IsNullOrWhiteSpace(taggedBitsPerSecond) && taggedBitsPerSecond != "0")) && stream.avg_frame_rate == "0/0") { return false; }
 
             return true;
+        }
+
+        /// <summary>
+        /// Cleans a filename of invalid characters
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public static string CleanFileName(string name)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach(string s in Constants.IllegalFilesystemChars)
+            {
+                sb.Replace(s, String.Empty);
+            }
+            return sb.ToString();
         }
     }
 }
