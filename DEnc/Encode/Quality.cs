@@ -5,33 +5,6 @@ using System.Text;
 namespace DEnc
 {
     /// <summary>
-    /// Some example qualities.
-    /// </summary>
-    public enum DefaultQuality
-    {
-        /// <summary>
-        /// Very low quality. Low grade SD to low grade HD
-        /// </summary>
-        potato,
-        /// <summary>
-        /// Low quality HD.
-        /// </summary>
-        low,
-        /// <summary>
-        /// Decent quality HD.
-        /// </summary>
-        medium,
-        /// <summary>
-        /// Good quality HD.
-        /// </summary>
-        high,
-        /// <summary>
-        /// Excellend quality HD
-        /// </summary>
-        ultra
-    }
-
-    /// <summary>
     /// An interface for a quality. Qualities are used to specify the outputs for DASHification.
     /// </summary>
     public interface IQuality
