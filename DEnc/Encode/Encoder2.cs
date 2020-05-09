@@ -295,11 +295,11 @@ namespace DEnc
 
         private Mp4BoxRenderedCommand GenerateDashManifest(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles, CancellationToken cancel)
         {
-            string outputPath = Path.Combine(config.OutputDirectory, config.OutputFileName) + ".mpd";
+            string mpdOutputPath = Path.Combine(config.OutputDirectory, config.OutputFileName) + ".mpd";
             var mp4boxCommand = Mp4BoxCommandBuilder.BuildMp4boxMpdCommand(
                 videoFiles: videoFiles,
                 audioFiles: audioFiles,
-                outFilePath: outputPath,
+                mpdOutputPath: mpdOutputPath,
                 keyInterval: (config.KeyframeInterval / config.Framerate) * 1000,
                 additionalFlags: config.Options.AdditionalMP4BoxFlags);
 
@@ -311,8 +311,16 @@ namespace DEnc
                 mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog, cancel);
                 
                 // Dash Failed TODO: Add in Progress report behavior that was excluded from this
+                // Detect error in MP4Box process and cleanup, then return null.
                 if (mpdResult.ExitCode != 0)
                 {
+                    MPD mpdFile = MPD.LoadFromFile(mpdOutputPath);
+                    var filePaths = mpdFile.GetFileNames().Select(x => Path.Combine(config.OutputDirectory, x));
+
+                    stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}. File: {config.InputFilePath}");
+                    CleanOutputFiles(filePaths);
+                    CleanOutputFiles(mpdResult.Output);
+
                     return null;
                 }
             }
