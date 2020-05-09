@@ -98,6 +98,13 @@ namespace DEnc
         private readonly Action<string> stdoutLog;
         private readonly Action<string> stderrLog;
 
+        [Obsolete("This method has been replaced by a new API", true)]
+        public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
+            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
+        {
+            throw new NotSupportedException();
+        }
+
         /// <summary>
         /// Creates a new encoder with the given paths for ffmpeg and MP4Box, as well as the working directory.
         /// The given pointers to ffmpeg and MP4Box are tested by executing them with no parameters upon construction. An exception is thrown if the execution fails.
