@@ -18,14 +18,14 @@ namespace DEnc.Commands
         internal static Mp4BoxRenderedCommand BuildMp4boxMpdCommand(
             IEnumerable<StreamVideoFile> videoFiles, 
             IEnumerable<StreamAudioFile> audioFiles, 
-            string outFilePath, 
+            string mpdOutputPath, 
             int keyInterval, 
             ICollection<string> additionalFlags)
         {
             ICollection<string> flags = additionalFlags ?? new List<string>();
 
             flags.Add($"-dash {keyInterval}");
-            flags.Add($"-out \"{outFilePath}\"");
+            flags.Add($"-out \"{mpdOutputPath}\"");
 
             List<string> inputs = new List<string>();
 
@@ -37,7 +37,7 @@ namespace DEnc.Commands
 
             string renderedParams = $"{flagsParams}\t--\t{inputsParams}";
 
-            return new Mp4BoxRenderedCommand(renderedParams, outFilePath);
+            return new Mp4BoxRenderedCommand(renderedParams, mpdOutputPath);
         }
 
         /// <summary>
