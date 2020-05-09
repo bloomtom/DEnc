@@ -54,5 +54,33 @@ namespace DEnc
             }
             return sb.ToString();
         }
+
+        /// <summary>
+        /// Gets all the BaseURL file names from the MPD file
+        /// </summary>
+        /// <param name="mpdFile"></param>
+        /// <returns></returns>
+        public static IEnumerable<string> GetFileNames(this MPD mpdFile)
+        {
+            if(mpdFile is null)
+            {
+                return new List<string>();
+            }
+
+            List<string> names = new List<string>();
+
+            foreach(var period in mpdFile.Period)
+            {
+                foreach(var set in period.AdaptationSet)
+                {
+                    foreach(var representation in set.Representation)
+                    {
+                        names.AddRange(representation.BaseURL);
+                    }
+                }
+            }
+
+            return names;
+        }
     }
 }
