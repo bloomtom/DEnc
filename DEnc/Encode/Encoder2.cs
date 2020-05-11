@@ -7,6 +7,7 @@ using System.Diagnostics;
 using DEnc.Serialization;
 using System.Threading;
 using DEnc.Commands;
+using DEnc.Models;
 
 namespace DEnc
 {
@@ -452,9 +453,9 @@ namespace DEnc
             return "und";
         }
 
-        private static void ReportProgress(IProgress<IEnumerable<EncodeStageProgress>> reporter, List<EncodeStageProgress> progresses, int index, double value)
+        private static void ReportProgress(IProgress<Dictionary<EncodingStage, double>> reporter, Dictionary<EncodingStage, double> progresses, EncodingStage stage, double value)
         {
-            progresses[index] = new EncodeStageProgress(progresses[index].Name, value);
+            progresses[stage] = value;
             reporter?.Report(progresses);
         }
 
