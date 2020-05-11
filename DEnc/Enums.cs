@@ -38,4 +38,25 @@ namespace DEnc
         /// </summary>
         ultra
     }
+
+    /// <summary>
+    /// The stages of the encoding process
+    /// </summary>
+    public enum EncodingStage
+    {
+        /// <summary>
+        /// Encoding the video
+        /// </summary>
+        Encode = 1,
+
+        /// <summary>
+        /// Generating DASH Manifest
+        /// </summary>
+        DASHify = 2,
+
+        /// <summary>
+        /// Processing subtitles
+        /// </summary>
+        PostProcess = 3
+    }
 }
