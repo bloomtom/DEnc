@@ -19,6 +19,34 @@ namespace DEncTests
         };
 
         [Fact]
+        public void Constructor_WithInvalidInputPath_ThrowsFileNotFoundException()
+        {
+            string testFile = "nonexistantFile.doesntexist";
+            var exception = Assert.Throws<FileNotFoundException>(() => new DashConfig(testFile, Environment.CurrentDirectory, Qualities));
+            Assert.Equal("Input path does not exist.", exception.Message);
+        }
+
+        [Fact]
+        public void Constructor_WithInvalidOutputPath_ThrowsDirectoryNotFoundException()
+        {
+            string testDir = @"D:\nodir\this\does\not\exist";
+            var exception = Assert.Throws<DirectoryNotFoundException>(() => new DashConfig(testFileName, testDir, Qualities));
+            Assert.Equal("Output directory does not exist.", exception.Message);
+        }
+
+        [Fact]
+        public void Constructor_WithNullQualities_ThrowsArgumentNullException()
+        {
+            var exception = Assert.Throws<ArgumentNullException>("qualities", () => new DashConfig(testFileName, Environment.CurrentDirectory, null));
+        }
+
+        [Fact]
+        public void Constructor_WithEmptyQualities_ThrowsArgumentOutOfRangeException()
+        {
+            var exception = Assert.Throws<ArgumentOutOfRangeException>("qualities", () => new DashConfig(testFileName, Environment.CurrentDirectory, new List<Quality>()));
+        }
+
+        [Fact]
         public void Constructor_WithDuplicateQualities_ThrowsArgumentException()
         {
             List<Quality> qualities = new List<Quality>()
@@ -28,15 +56,25 @@ namespace DEncTests
             };
 
             var exception = Assert.Throws<ArgumentException>("qualities", () => new DashConfig(testFileName, Environment.CurrentDirectory, qualities));
-            Assert.Equal("Duplicate quality bitrates found. Bitrates must be distinct.", exception.Message);
+            Assert.Equal("Duplicate quality bitrates found. Bitrates must be distinct.\r\nParameter name: qualities", exception.Message);
         }
 
         [Fact]
-        public void Constructor_WithInvalidInputPath_ThrowsFileNotFoundException()
+        public void Constructor_WithNullOutputFileName_UsesInputName()
         {
-            string testFile = "nonexistantFile.doesntexist";
-            var exception = Assert.Throws<FileNotFoundException>(() => new DashConfig(testFile, Environment.CurrentDirectory, Qualities));
-            Assert.Equal("Input path does not exist.", exception.Message);
+            DashConfig config = new DashConfig(testFileName, Environment.CurrentDirectory, Qualities);
+
+            Assert.Equal("testfile", config.OutputFileName);
         }
+
+        [Fact]
+        public void Constructor_WithInvalidOutputCharacters_CleansCharacters()
+        {
+            string outputName = "testfile*&:\\";
+            DashConfig config = new DashConfig(testFileName, Environment.CurrentDirectory, Qualities, outputName);
+
+            Assert.Equal("testfile", config.OutputFileName);
+        }
+
     }
 }
