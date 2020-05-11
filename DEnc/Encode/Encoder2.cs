@@ -103,6 +103,8 @@ namespace DEnc
         /// </summary>
         public bool EnableStreamCopying { get; set; } = false;
 
+        public Dictionary<EncodingStage, double> Progress { get; private set; }
+
         private readonly Action<string> stdoutLog;
         private readonly Action<string> stderrLog;
 
@@ -122,6 +124,13 @@ namespace DEnc
             FFprobePath = ffprobePath;
             BoxPath = boxPath;
             WorkingDirectory = workingDirectory ?? Path.GetTempPath();
+            Progress = new Dictionary<EncodingStage, double>()
+            {
+                [EncodingStage.Encode] = 0,
+                [EncodingStage.DASHify] = 0,
+                [EncodingStage.PostProcess] = 0,
+            };
+
             this.stdoutLog = stdoutLog ?? new Action<string>((s) => { });
             this.stderrLog = stderrLog ?? new Action<string>((s) => { });
 
@@ -180,37 +189,36 @@ namespace DEnc
                 config.KeyframeInterval = config.Framerate * 3;
             }
 
-            //TODO: Sort out a cleared way to provde progress
-            /*
-            var progressList = new List<EncodeStageProgress>()
+            //This is not really the proper place to have this
+            // Logging shim for ffmpeg to get progress info
+            var ffmpegLogShim = new Action<string>(x =>
             {
-                new EncodeStageProgress("Encode", 0),
-                new EncodeStageProgress("DASHify", 0),
-                new EncodeStageProgress("Post Process", 0)
-            };
-            const int encodeStage = 0;
-            const int dashStage = 1;
-            const int postStage = 2;
-
-            var stdErrShim = stderrLog;
-            if (progress != null)
-            {
-                stdErrShim = new Action<string>(x =>
+                if (x != null)
+                {
+                    var match = Encode.Regexes.ParseProgress.Match(x);
+                    if (match.Success && TimeSpan.TryParse(match.Value, out TimeSpan p))
+                    {
+                        stdoutLog(x);
+                        float progressFloat = Math.Min(1, (float)(p.TotalMilliseconds / 1000) / inputStats.Duration);
+                        if (progress != null)
+                        {
+                            ReportProgress(progress, EncodingStage.Encode, progressFloat);
+                        }
+                            
+                    }
+                    else
+                    {
+                        stderrLog(x);
+                    }
+                }
+                else
                 {
                     stderrLog(x);
-                    if (x != null)
-                    {
-                        var match = Encode.Regexes.ParseProgress.Match(x);
-                        if (match.Success && TimeSpan.TryParse(match.Value, out TimeSpan p))
-                        {
-                            ReportProgress(progress, progressList, encodeStage, Math.Min(1, (float)(p.TotalMilliseconds / 1000) / inputStats.Duration));
-                        }
-                    }
-                });
-            }*/
+                }
+            });
 
             cancel.ThrowIfCancellationRequested();
-            FfmpegRenderedCommand ffmpgCommand = EncodeVideo(config, inputStats, inputBitrate, enableStreamCopy, cancel);
+            FfmpegRenderedCommand ffmpgCommand = EncodeVideo(config, inputStats, inputBitrate, enableStreamCopy, ffmpegLogShim, cancel);
             if (ffmpgCommand is null)
             {
                 return null;
@@ -222,13 +230,13 @@ namespace DEnc
                 return null;
             }
 
-            //ReportProgress(progress, progressList, dashStage, 1);
-            //ReportProgress(progress, progressList, postStage, 0.3
+            ReportProgress(progress, EncodingStage.DASHify, 1);
+            ReportProgress(progress, EncodingStage.PostProcess, 0.3);
 
             int maxFileIndex = ffmpgCommand.AllPieces.Max(x => x.Index);
             List<StreamSubtitleFile> allSubtitles = ProcessSubtitles(config, ffmpgCommand.SubtitlePieces, maxFileIndex + 1);
 
-            //ReportProgress(progress, progressList, postStage, 0.66);
+            ReportProgress(progress, EncodingStage.PostProcess, 0.66);
 
             try
             {
@@ -248,11 +256,11 @@ namespace DEnc
             }
             finally
             {
-                //ReportProgress(progress, progressList, postStage, 1);
+                ReportProgress(progress, EncodingStage.PostProcess, 1);
             }
         }
 
-        private FfmpegRenderedCommand EncodeVideo(DashConfig config, MediaMetadata inputStats, int inputBitrate, bool enableStreamCopying, CancellationToken cancel)
+        private FfmpegRenderedCommand EncodeVideo(DashConfig config, MediaMetadata inputStats, int inputBitrate, bool enableStreamCopying, Action<string> progressCallback, CancellationToken cancel)
         {
             FfmpegRenderedCommand ffmpegCommand = FFmpegCommandBuilder 
                 .Initilize(
@@ -272,7 +280,7 @@ namespace DEnc
             {
                 ExecutionResult ffResult;
                 stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.RenderedCommand}");
-                ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, stderrLog, cancel); //TODO: Use a better log/error callback mechanism? Also use a better progress mechanism
+                ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, progressCallback, cancel); //TODO: Use a better log/error callback mechanism? Also use a better progress mechanism
 
                 // Detect error in ffmpeg process and cleanup, then return null.
                 if (ffResult.ExitCode != 0)
@@ -400,6 +408,11 @@ namespace DEnc
 
             return subtitles;
         }
+        private void ReportProgress(IProgress<Dictionary<EncodingStage, double>> reporter, EncodingStage stage, double value)
+        {
+            Progress[stage] = value;
+            reporter?.Report(Progress);
+        }
 
         private static string GetSubtitleName(string vttFilename)
         {
@@ -415,12 +428,6 @@ namespace DEnc
                 }
             }
             return "und";
-        }
-
-        private static void ReportProgress(IProgress<Dictionary<EncodingStage, double>> reporter, Dictionary<EncodingStage, double> progresses, EncodingStage stage, double value)
-        {
-            progresses[stage] = value;
-            reporter?.Report(progresses);
         }
 
         /// <summary>
