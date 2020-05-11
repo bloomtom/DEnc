@@ -129,42 +129,7 @@ namespace DEnc
             {
                 throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
             }
-
-            //ValidateTempAndExesExist();
         }
-
-        private void ValidateTempAndExesExist()
-        {
-            if (!Directory.Exists(WorkingDirectory))
-            {
-                throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
-            }
-
-            if (Environment.GetEnvironmentVariable(FFmpegPath) is null)
-            {
-                if (!File.Exists(FFmpegPath))
-                {
-                    throw new FileNotFoundException("The given path for ffmpegPath does not exist");
-                }
-            }
-
-            if (Environment.GetEnvironmentVariable(FFprobePath) is null)
-            {
-                if (!File.Exists(FFprobePath))
-                {
-                    throw new FileNotFoundException("The given path for ffprobePath does not exist");
-                }
-            }
-
-            if (Environment.GetEnvironmentVariable(BoxPath) is null)
-            {
-                if (!File.Exists(BoxPath))
-                {
-                    throw new FileNotFoundException("The given path for boxPath does not exist");
-                }
-            }
-        }
-
 
         [Obsolete("This method has been replaced by a new API", true)]
         public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
@@ -173,14 +138,13 @@ namespace DEnc
             throw new NotSupportedException();
         }
 
-        public DashEncodeResult GenerateDash(DashConfig config, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
+        public DashEncodeResult GenerateDash(DashConfig config, IProgress<Dictionary<EncodingStage, double>> progress = null, CancellationToken cancel = default(CancellationToken))
         {
             cancel.ThrowIfCancellationRequested();
             if (!Directory.Exists(WorkingDirectory))
             {
                 throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
             }
-            //ValidateTempAndExesExist();
 
             //Field declarations
             MediaMetadata inputStats;
