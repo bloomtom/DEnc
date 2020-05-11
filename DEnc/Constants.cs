@@ -29,7 +29,7 @@ namespace DEnc
 
         internal static HashSet<string> IllegalFilesystemChars = new HashSet<string>
         {
-            "#", "&", "*", "<", ">", "/", "?", ":", "\"", "%"
+            "#", "&", "*", "<", ">", "/", "?", ":", "\"", "%", "\\"
         };
     }
 }
