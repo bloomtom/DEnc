@@ -25,7 +25,12 @@ namespace DEnc
                 throw new DirectoryNotFoundException("Output directory does not exist.");
             }
 
-            if (qualities == null || qualities.Count() == 0)
+            if(qualities == null)
+            {
+                throw new ArgumentNullException(nameof(qualities));
+            }
+
+            if (!qualities.Any())
             {
                 throw new ArgumentOutOfRangeException("No qualitied specified. At least one quality is required.", nameof(qualities));
             }
@@ -49,7 +54,9 @@ namespace DEnc
             } 
             else
             {
-                OutputFileName = Path.GetFileName(inputFilePath);
+                string name = Path.GetFileName(inputFilePath);
+                string extension = Path.GetExtension(inputFilePath);
+                OutputFileName = name.Replace(extension, String.Empty);
             }
         }
 
