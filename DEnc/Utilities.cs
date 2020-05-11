@@ -47,7 +47,7 @@ namespace DEnc
         /// <returns></returns>
         public static string CleanFileName(string name)
         {
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder(name);
             foreach(string s in Constants.IllegalFilesystemChars)
             {
                 sb.Replace(s, String.Empty);

@@ -27,12 +27,12 @@ namespace DEnc
 
             if (qualities == null || qualities.Count() == 0)
             {
-                throw new ArgumentOutOfRangeException("No qualitied specified. At least one quality is required.");
+                throw new ArgumentOutOfRangeException("No qualitied specified. At least one quality is required.", nameof(qualities));
             }
 
-            if (Qualities.GroupBy(x => x.Bitrate).Count() != Qualities.Count())
+            if (qualities.GroupBy(x => x.Bitrate).Count() != qualities.Count())
             {
-                throw new ArgumentOutOfRangeException("Duplicate quality bitrates found. Bitrates must be distinct.");
+                throw new ArgumentException("Duplicate quality bitrates found. Bitrates must be distinct.", nameof(qualities));
             }
 
             Qualities = qualities;
@@ -98,13 +98,6 @@ namespace DEnc
         private readonly Action<string> stdoutLog;
         private readonly Action<string> stderrLog;
 
-        [Obsolete("This method has been replaced by a new API", true)]
-        public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
-            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
-        {
-            throw new NotSupportedException();
-        }
-
         /// <summary>
         /// Creates a new encoder with the given paths for ffmpeg and MP4Box, as well as the working directory.
         /// The given pointers to ffmpeg and MP4Box are tested by executing them with no parameters upon construction. An exception is thrown if the execution fails.
@@ -124,7 +117,12 @@ namespace DEnc
             this.stdoutLog = stdoutLog ?? new Action<string>((s) => { });
             this.stderrLog = stderrLog ?? new Action<string>((s) => { });
 
-            ValidateTempAndExesExist();
+            if (!Directory.Exists(WorkingDirectory))
+            {
+                throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
+            }
+
+            //ValidateTempAndExesExist();
         }
 
         private void ValidateTempAndExesExist()
@@ -159,10 +157,22 @@ namespace DEnc
             }
         }
 
-        private async Task<DashEncodeResult> GenerateDash(DashConfig config, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
+
+        [Obsolete("This method has been replaced by a new API", true)]
+        public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
+            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
+        {
+            throw new NotSupportedException();
+        }
+
+        public DashEncodeResult GenerateDash(DashConfig config, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
         {
             cancel.ThrowIfCancellationRequested();
-            ValidateTempAndExesExist();
+            if (!Directory.Exists(WorkingDirectory))
+            {
+                throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
+            }
+            //ValidateTempAndExesExist();
 
             //Field declarations
             MediaMetadata inputStats;
