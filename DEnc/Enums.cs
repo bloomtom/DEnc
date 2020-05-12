@@ -59,4 +59,39 @@ namespace DEnc
         /// </summary>
         PostProcess = 3
     }
+
+    /// <summary>
+    /// H264 Presets
+    /// </summary>
+    public enum H264Preset
+    {
+        ultrafast, 
+        superfast, 
+        veryfast, 
+        fast, 
+        medium, 
+        slow, 
+        veryslow
+    }
+
+    /// <summary>
+    /// H264 Profiles
+    /// </summary>
+    public enum H264Profile
+    {
+        /// <summary>
+        /// Ideal for older mobile devices
+        /// </summary>
+        baseline,
+
+        /// <summary>
+        /// Ideal for web streaming and the majority of devices
+        /// </summary>
+        main,
+
+        /// <summary>
+        /// Ideal for high-end mobile device, or direct playback on a computer
+        /// </summary>
+        high
+    }
 }
