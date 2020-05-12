@@ -87,13 +87,27 @@ namespace DEnc
         /// <param name="width">Width of frame in pixels</param>
         /// <param name="height">Height of frame in pixels</param>
         /// <param name="bitrate">The bitrate in kb/s</param>
-        /// <param name="preset">ffmpeg preset</param>
+        /// <param name="preset">h264 preset</param>
         public Quality(int width, int height, int bitrate, string preset)
         {
             Width = width;
             Height = height;
             Bitrate = bitrate;
             Preset = preset;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="width">Width of frame in pixels</param>
+        /// <param name="height">Height of frame in pixels</param>
+        /// <param name="bitrate">The bitrate in kb/s</param>
+        /// <param name="preset">h264 preset</param>
+        /// <param name="profile">h264 profile</param>
+        public Quality(int width, int height, int bitrate, string preset, string profile)
+            :this(width, height, bitrate, preset)
+        {
+            Profile = profile;
         }
 
         /// <summary>
