@@ -97,8 +97,8 @@ namespace DEnc.Commands
                         {
                             copyThisStream ? "" : getSize(quality),
                             copyThisStream ? "" : getBitrate(quality.Bitrate == 0 ? defaultBitrate : quality.Bitrate),
-                            copyThisStream ? "" : getPreset(quality.Preset),
-                            copyThisStream ? "" : getProfile(quality.Profile),
+                            copyThisStream ? "" : getPreset(quality.Preset.ToString()),
+                            copyThisStream ? "" : getProfile(quality.Profile.ToString()),
                             copyThisStream ? "" : getProfileLevel(quality.Level),
                             copyThisStream ? "" : getPixelFormat(quality.PixelFormat),
                             getFramerate(framerate),

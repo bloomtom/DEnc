@@ -24,11 +24,11 @@ namespace DEnc
         /// <summary>
         /// ffmpeg preset (veryfast, fast, medium, slow, veryslow).
         /// </summary>
-        string Preset { get; set; }
+        H264Preset Preset { get; set; }
         /// <summary>
         /// ffmpeg h264 encoding profile (Baseline, Main, High,)
         /// </summary>
-        string Profile { get; set; }
+        H264Profile Profile { get; set; }
         /// <summary>
         /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
         /// </summary>
@@ -59,11 +59,11 @@ namespace DEnc
         /// <summary>
         /// ffmpeg preset (veryfast, fast, medium, slow, veryslow).
         /// </summary>
-        public string Preset { get; set; } = "medium";
+        public H264Preset Preset { get; set; } = H264Preset.medium;
         /// <summary>
         /// ffmpeg h264 encoding profile (Baseline, Main, High,)
         /// </summary>
-        public string Profile { get; set; } = "high";
+        public H264Profile Profile { get; set; } = H264Profile.high;
         /// <summary>
         /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
         /// </summary>
@@ -88,7 +88,7 @@ namespace DEnc
         /// <param name="height">Height of frame in pixels</param>
         /// <param name="bitrate">The bitrate in kb/s</param>
         /// <param name="preset">h264 preset</param>
-        public Quality(int width, int height, int bitrate, string preset)
+        public Quality(int width, int height, int bitrate, H264Preset preset)
         {
             Width = width;
             Height = height;
@@ -104,7 +104,7 @@ namespace DEnc
         /// <param name="bitrate">The bitrate in kb/s</param>
         /// <param name="preset">h264 preset</param>
         /// <param name="profile">h264 profile</param>
-        public Quality(int width, int height, int bitrate, string preset, string profile)
+        public Quality(int width, int height, int bitrate, H264Preset preset, H264Profile profile)
             :this(width, height, bitrate, preset)
         {
             Profile = profile;
@@ -125,7 +125,7 @@ namespace DEnc
         /// <param name="q"></param>
         /// <param name="preset"></param>
         /// <returns></returns>
-        public static IEnumerable<IQuality> GenerateDefaultQualities(DefaultQuality q, string preset)
+        public static IEnumerable<IQuality> GenerateDefaultQualities(DefaultQuality q, H264Preset preset)
         {
             switch (q)
             {
@@ -176,7 +176,7 @@ namespace DEnc
         /// </summary>
         public static Quality GetCopyQuality()
         {
-            return new Quality(0, 0, 0, "");
+            return new Quality(0, 0, 0, default(H264Preset));
         }
 
         /// <summary>

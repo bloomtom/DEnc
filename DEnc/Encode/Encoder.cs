@@ -136,7 +136,7 @@ namespace DEnc
             }
             var compareQuality = qualities.First();
             bool enableStreamCopy = EnableStreamCopying && compareQuality.Bitrate == 0 &&
-                Copyable264Infer.DetermineCopyCanBeDone(compareQuality.PixelFormat, compareQuality.Level, compareQuality.Profile, inputStats.VideoStreams);
+                Copyable264Infer.DetermineCopyCanBeDone(compareQuality.PixelFormat, compareQuality.Level, compareQuality.Profile.ToString(), inputStats.VideoStreams);
 
             var progressList = new List<EncodeStageProgress>()
             {

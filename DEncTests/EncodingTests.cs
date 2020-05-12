@@ -32,18 +32,18 @@ namespace DEncTests
 
         List<Quality> Qualities => new List<Quality>()
         {
-            new Quality(1920, 1080, 4000, "fast"),
-            new Quality(1280, 720, 1280, "fast"),
-            new Quality(640, 480, 768, "fast")
+            new Quality(1920, 1080, 4000, H264Preset.fast),
+            new Quality(1280, 720, 1280, H264Preset.fast),
+            new Quality(640, 480, 768, H264Preset.fast)
         };
 
         List<Quality> SubtitleQualities => new List<Quality>()
         {
-            new Quality(1280, 720, 9000, "ultrafast"),
-            new Quality(640, 480, 768, "ultrafast")
+            new Quality(1280, 720, 9000, H264Preset.ultrafast),
+            new Quality(640, 480, 768, H264Preset.ultrafast)
         };
 
-        List<Quality> MultiLanguageQualities => new List<Quality>() { new Quality(640, 480, 768, "ultrafast") };
+        List<Quality> MultiLanguageQualities => new List<Quality>() { new Quality(640, 480, 768, H264Preset.ultrafast) };
 
         [Fact]
         public void GenerateDash_NormalEncode_ProducesCorrectDashEncodeResult()

@@ -33,7 +33,7 @@ namespace DEnc
 
             if (!qualities.Any())
             {
-                throw new ArgumentOutOfRangeException("No qualitied specified. At least one quality is required.", nameof(qualities));
+                throw new ArgumentOutOfRangeException(nameof(qualities), "No qualitied specified. At least one quality is required.");
             }
 
             if (qualities.GroupBy(x => x.Bitrate).Count() != qualities.Count())
@@ -174,7 +174,7 @@ namespace DEnc
 
             if (EnableStreamCopying && compareQuality.Bitrate == 0)
             {
-                enableStreamCopy = Copyable264Infer.DetermineCopyCanBeDone(compareQuality.PixelFormat, compareQuality.Level, compareQuality.Profile, inputStats.VideoStreams);
+                enableStreamCopy = Copyable264Infer.DetermineCopyCanBeDone(compareQuality.PixelFormat, compareQuality.Level, compareQuality.Profile.ToString(), inputStats.VideoStreams);
             }
 
             // Set the framerate interval to match input if user has not already set

@@ -232,15 +232,15 @@ namespace DEnc.Commands
             return this;
         }
 
-        public IVideoCommandBuilder WithPreset(string preset)
+        public IVideoCommandBuilder WithPreset(H264Preset preset)
         {
-            TryAddSimpleCommand($"-preset {preset}", preset);
+            TryAddSimpleCommand($"-preset {preset}", preset.ToString());
             return this;
         }
 
-        public IVideoCommandBuilder WithProfile(string profile)
+        public IVideoCommandBuilder WithProfile(H264Profile profile)
         {
-            TryAddSimpleCommand($"-profile:v {profile}", profile);
+            TryAddSimpleCommand($"-profile:v {profile}", profile.ToString());
             return this;
         }
 
@@ -406,8 +406,8 @@ namespace DEnc.Commands
         IVideoCommandBuilder WithSize(IQuality quality);
         IVideoCommandBuilder WithBitrate(int bitrate);
         IVideoCommandBuilder WithBitrate(int bitrate, int defaultBitrate);
-        IVideoCommandBuilder WithPreset(string preset);
-        IVideoCommandBuilder WithProfile(string profile);
+        IVideoCommandBuilder WithPreset(H264Preset preset);
+        IVideoCommandBuilder WithProfile(H264Profile profile);
         IVideoCommandBuilder WithProfileLevel(string level);
         IVideoCommandBuilder WithPixelFormat(string format);
         IVideoCommandBuilder WithFramerate(int framerate);
