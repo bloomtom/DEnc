@@ -363,7 +363,7 @@ namespace DEnc
                 var dotComponents = vttFilename.Split('.');
                 foreach (var component in dotComponents)
                 {
-                    if (LanguageCodes.Languages.TryGetValue(component, out string languageName))
+                    if (Constants.Languages.TryGetValue(component, out string languageName))
                     {
                         return languageName;
                     }
