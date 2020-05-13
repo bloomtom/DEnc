@@ -1,5 +1,4 @@
-﻿using DEnc.Commands.Interfaces;
-using DEnc.Models;
+﻿using DEnc.Models;
 using DEnc.Models.Interfaces;
 using DEnc.Serialization;
 using System;
@@ -10,7 +9,7 @@ using System.Text;
 
 namespace DEnc.Commands
 {
-    internal class FFmpegAudioCommandBuilder : IFFmpegAudioCommandBuilder
+    internal class FFmpegAudioCommandBuilder
     {
         List<string> commands;
 
@@ -23,9 +22,9 @@ namespace DEnc.Commands
         string language;
         string title;
 
-        public static IFFmpegAudioCommandBuilder Initilize(MediaStream audioStream, string outputDirectory, string outputBaseFilename, ICollection<string> additionalFlags)
+        public static FFmpegAudioCommandBuilder Initilize(MediaStream audioStream, string outputDirectory, string outputBaseFilename, ICollection<string> additionalFlags)
         {
-            IFFmpegAudioCommandBuilder builder = new FFmpegAudioCommandBuilder(audioStream, outputDirectory, outputBaseFilename, additionalFlags);
+            FFmpegAudioCommandBuilder builder = new FFmpegAudioCommandBuilder(audioStream, outputDirectory, outputBaseFilename, additionalFlags);
             return builder;
         }
 
@@ -60,7 +59,7 @@ namespace DEnc.Commands
             };
         }
 
-        public IFFmpegAudioCommandBuilder WithLanguage()
+        public FFmpegAudioCommandBuilder WithLanguage()
         {
             string language = audioStream.tag
                 .Where(x => x.key == "language")
@@ -75,7 +74,7 @@ namespace DEnc.Commands
             return this;
         }
 
-        public IFFmpegAudioCommandBuilder WithTitle()
+        public FFmpegAudioCommandBuilder WithTitle()
         {
             string title = audioStream.tag
                 .Where(x => x.key == "title")
@@ -90,7 +89,7 @@ namespace DEnc.Commands
             return this;
         }
 
-        public IFFmpegAudioCommandBuilder WithCodec()
+        public FFmpegAudioCommandBuilder WithCodec()
         {
             if (codecSupported)
             {

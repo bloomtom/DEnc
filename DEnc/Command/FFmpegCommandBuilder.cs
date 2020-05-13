@@ -1,5 +1,4 @@
-﻿using DEnc.Commands.Interfaces;
-using DEnc.Models;
+﻿using DEnc.Models;
 using DEnc.Models.Interfaces;
 using DEnc.Serialization;
 using System;
@@ -10,7 +9,7 @@ using System.Text;
 
 namespace DEnc.Commands
 {
-    internal class FFmpegCommandBuilder : IFFmpegCommandBuilder
+    internal class FFmpegCommandBuilder
     {
         string inputPath;
         string outputDirectory;
@@ -38,9 +37,9 @@ namespace DEnc.Commands
         private ICollection<string> AdditionalAudioFlags => options?.AdditionalAudioFlags;
         private ICollection<string> AdditionalFlags => options?.AdditionalFlags;
 
-        internal static IFFmpegCommandBuilder Initilize(string inPath, string outDirectory, string outBaseFilename, IEncodeOptions options, bool enableStreamCopying)
+        internal static FFmpegCommandBuilder Initilize(string inPath, string outDirectory, string outBaseFilename, IEncodeOptions options, bool enableStreamCopying)
         {
-            IFFmpegCommandBuilder builder = new FFmpegCommandBuilder(inPath, outDirectory, outBaseFilename, options, enableStreamCopying);
+            FFmpegCommandBuilder builder = new FFmpegCommandBuilder(inPath, outDirectory, outBaseFilename, options, enableStreamCopying);
             return builder;
         }
 
@@ -62,7 +61,7 @@ namespace DEnc.Commands
             return new FfmpegRenderedCommand(parameters, videoFiles, audioFiles, subtitleFiles);
         }
 
-        public IFFmpegCommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate)
+        public FFmpegCommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate)
         {
             // TODO: TEMP(ish) for now, ideally the caller could call all the appropriate builder methods
             foreach (MediaStream video in videoStreams)
@@ -77,7 +76,7 @@ namespace DEnc.Commands
                     bool copyThisStream = enableStreamCopying && quality.Bitrate == 0;
                     string path = Path.Combine(outputDirectory, $"{outputBaseFilename}_{(quality.Bitrate == 0 ? "original" : quality.Bitrate.ToString())}.mp4");
 
-                    IFFmpegVideoCommandBuilder videoBuilder = FFmpegVideoCommandBuilder.Initilize(video.index, quality.Bitrate, path, AdditionalVideoFlags);
+                    FFmpegVideoCommandBuilder videoBuilder = FFmpegVideoCommandBuilder.Initilize(video.index, quality.Bitrate, path, AdditionalVideoFlags);
 
                     if (!copyThisStream)
                     {
@@ -102,7 +101,7 @@ namespace DEnc.Commands
             return this;
         } 
 
-        public IFFmpegCommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams)
+        public FFmpegCommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams)
         {
             if (!streams.Any())
             {
@@ -111,7 +110,7 @@ namespace DEnc.Commands
 
             foreach (MediaStream audioStream in streams)
             {
-                IFFmpegAudioCommandBuilder builder = FFmpegAudioCommandBuilder.Initilize(audioStream, outputDirectory, outputBaseFilename, AdditionalAudioFlags);
+                FFmpegAudioCommandBuilder builder = FFmpegAudioCommandBuilder.Initilize(audioStream, outputDirectory, outputBaseFilename, AdditionalAudioFlags);
                 StreamAudioFile streamFile = builder
                     .WithLanguage()
                     .WithTitle()
@@ -123,7 +122,7 @@ namespace DEnc.Commands
             return this;
         }
 
-        public IFFmpegCommandBuilder WithSubtitleCommands(IEnumerable<MediaStream> streams)
+        public FFmpegCommandBuilder WithSubtitleCommands(IEnumerable<MediaStream> streams)
         {
             if (!streams.Any())
             {

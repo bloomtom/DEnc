@@ -1,5 +1,4 @@
-﻿using DEnc.Commands.Interfaces;
-using DEnc.Models;
+﻿using DEnc.Models;
 using DEnc.Models.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -8,16 +7,16 @@ using System.Text;
 
 namespace DEnc.Commands
 {
-    internal class FFmpegVideoCommandBuilder : IFFmpegVideoCommandBuilder
+    internal class FFmpegVideoCommandBuilder
     {
         int index;
         int bitrate;
         string path;
         List<string> commands;
 
-        public static IFFmpegVideoCommandBuilder Initilize(int index, int bitrate, string path, ICollection<string> additionalFlags)
+        public static FFmpegVideoCommandBuilder Initilize(int index, int bitrate, string path, ICollection<string> additionalFlags)
         {
-            IFFmpegVideoCommandBuilder builder = new FFmpegVideoCommandBuilder(index, bitrate, path, additionalFlags);
+            FFmpegVideoCommandBuilder builder = new FFmpegVideoCommandBuilder(index, bitrate, path, additionalFlags);
             return builder;
         }
 
@@ -49,7 +48,7 @@ namespace DEnc.Commands
             };
         }
 
-        public IFFmpegVideoCommandBuilder WithSize(IQuality quality)
+        public FFmpegVideoCommandBuilder WithSize(IQuality quality)
         {
             if (quality.Width == 0 || quality.Height == 0)
             {
@@ -59,7 +58,7 @@ namespace DEnc.Commands
             return this;
         }
 
-        public IFFmpegVideoCommandBuilder WithBitrate(int bitrate)
+        public FFmpegVideoCommandBuilder WithBitrate(int bitrate)
         {
             if (bitrate == 0)
             {
@@ -69,7 +68,7 @@ namespace DEnc.Commands
             return this;
         }
 
-        public IFFmpegVideoCommandBuilder WithBitrate(int bitrate, int defaultBitrate)
+        public FFmpegVideoCommandBuilder WithBitrate(int bitrate, int defaultBitrate)
         {
             if (bitrate == 0)
             {
@@ -80,31 +79,31 @@ namespace DEnc.Commands
             return this;
         }
 
-        public IFFmpegVideoCommandBuilder WithPreset(H264Preset preset)
+        public FFmpegVideoCommandBuilder WithPreset(H264Preset preset)
         {
             TryAddSimpleCommand($"-preset {preset}", preset.ToString());
             return this;
         }
 
-        public IFFmpegVideoCommandBuilder WithProfile(H264Profile profile)
+        public FFmpegVideoCommandBuilder WithProfile(H264Profile profile)
         {
             TryAddSimpleCommand($"-profile:v {profile}", profile.ToString());
             return this;
         }
 
-        public IFFmpegVideoCommandBuilder WithProfileLevel(string level)
+        public FFmpegVideoCommandBuilder WithProfileLevel(string level)
         {
             TryAddSimpleCommand($"-level {level}", level);
             return this;
         }
 
-        public IFFmpegVideoCommandBuilder WithPixelFormat(string format)
+        public FFmpegVideoCommandBuilder WithPixelFormat(string format)
         {
             TryAddSimpleCommand($"-pix_fmt {format}", format);
             return this;
         }
 
-        public IFFmpegVideoCommandBuilder WithFramerate(int framerate)
+        public FFmpegVideoCommandBuilder WithFramerate(int framerate)
         {
             if (framerate == 0)
             {
@@ -114,7 +113,7 @@ namespace DEnc.Commands
             return this;
         }
 
-        public IFFmpegVideoCommandBuilder WithVideoCodec(string sourceCodec, int keyframeInterval, bool enableCopy)
+        public FFmpegVideoCommandBuilder WithVideoCodec(string sourceCodec, int keyframeInterval, bool enableCopy)
         {
             string defaultCoding = $"-x264-params keyint={keyframeInterval}:scenecut=0";
 
