@@ -61,16 +61,56 @@ namespace DEnc
     }
 
     /// <summary>
-    /// H264 Presets
+    /// H264 Presets. 
+    /// The slower the preset the smaller the filesize and the better the quality, but the longer the encoding time.
+    /// Has diminishing returns near the end of each spectrum
+    /// Recommended range is medium -> faster
     /// </summary>
     public enum H264Preset
     {
-        ultrafast, 
-        superfast, 
-        veryfast, 
-        fast, 
-        medium, 
-        slow, 
+        /// <summary>
+        /// ~55% faster than medium. Extremely low quality.
+        /// </summary>
+        ultrafast,
+
+        /// <summary>
+        /// ~50% faster than medium. Very low quality.
+        /// </summary>
+        superfast,
+
+        /// <summary>
+        /// ~45% faster than medium. Quality begins dropping significantly here.
+        /// </summary>
+        veryfast,
+
+        /// <summary>
+        /// ~25% faster than medium.
+        /// </summary>
+        faster,
+
+        /// <summary>
+        /// ~10% faster than medium.
+        /// </summary>
+        fast,
+
+        /// <summary>
+        /// Default preset, quality begins to peak here.
+        /// </summary>
+        medium,
+
+        /// <summary>
+        /// ~40% slower than medium. Marginally better quality than medium.
+        /// </summary>
+        slow,
+
+        /// <summary>
+        /// ~100% slower than medium. Near identical quality to slow.
+        /// </summary>
+        slower,
+
+        /// <summary>
+        /// ~280% slower than medium. Near identical quality to slower.
+        /// </summary>
         veryslow
     }
 
