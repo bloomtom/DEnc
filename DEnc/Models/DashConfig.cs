@@ -38,7 +38,7 @@ namespace DEnc.Models
 
             if (!qualities.Any())
             {
-                throw new ArgumentOutOfRangeException(nameof(qualities), "No qualitied specified. At least one quality is required.");
+                throw new ArgumentOutOfRangeException(nameof(qualities), "No qualities specified. At least one quality is required.");
             }
 
             if (qualities.GroupBy(x => x.Bitrate).Count() != qualities.Count())
@@ -82,7 +82,7 @@ namespace DEnc.Models
         public IEnumerable<IQuality> Qualities { get; internal set; }
 
         /// <summary>
-        /// The base output filename, without extension. This name is used as the basee for the output names.
+        /// The base output filename, without extension. This name is used as the base for the output names.
         /// </summary>
         public string OutputFileName { get; }
 

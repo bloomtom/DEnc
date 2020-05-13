@@ -34,7 +34,7 @@ namespace DEnc
         /// </summary>
         high,
         /// <summary>
-        /// Excellend quality HD
+        /// Excellent quality HD
         /// </summary>
         ultra
     }
@@ -62,7 +62,7 @@ namespace DEnc
 
     /// <summary>
     /// H264 Presets. 
-    /// The slower the preset the smaller the filesize and the better the quality, but the longer the encoding time.
+    /// The slower the preset the smaller the file size and the better the quality, but the longer the encoding time.
     /// Has diminishing returns near the end of each spectrum
     /// Recommended range is medium -> faster
     /// </summary>

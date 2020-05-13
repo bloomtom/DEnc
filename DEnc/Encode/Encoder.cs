@@ -97,7 +97,7 @@ namespace DEnc
         }
 
         /// <summary>
-        /// COnverts the inut file into an MPEG DASH representations. 
+        /// oOnverts the input file into an MPEG DASH representations. 
         /// This includes multiple bitrates, subtitle tracks, audio tracks, and an MPD manifest.
         /// </summary>
         /// <param name="config"></param>
