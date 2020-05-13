@@ -48,7 +48,7 @@ namespace DEncTests
         [Fact]
         public void GenerateDash_NormalEncode_ProducesCorrectDashEncodeResult()
         {
-            Encoder2 encoder = new Encoder2(ffmpegPath, ffprobePath, mp4boxPath);
+            DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath);
             DashConfig config = new DashConfig(testFileName, RunPath, Qualities, "output");
 
             encodeResult = encoder.GenerateDash(config);
@@ -63,7 +63,7 @@ namespace DEncTests
         public void GenerateDash_WithCancellationToken_ThrowsOperationCanceledException()
         {
             var tokenSource = new CancellationTokenSource(500);
-            Encoder2 encoder = new Encoder2(ffmpegPath, ffprobePath, mp4boxPath);
+            DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath);
             DashConfig config = new DashConfig(testFileName, RunPath, Qualities, "output");
 
             Assert.Throws<OperationCanceledException>(() => encodeResult = encoder.GenerateDash(config, cancel: tokenSource.Token));
@@ -72,7 +72,7 @@ namespace DEncTests
         [Fact]
         public void GenerateDash_WithManySubtitles_ProducesSubtitleFiles()
         {
-            Encoder2 encoder = new Encoder2(ffmpegPath, ffprobePath, mp4boxPath);
+            DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath);
             encoder.EnableStreamCopying = true;
             DashConfig config = new DashConfig(subtitleTestFileName, RunPath, SubtitleQualities, "outputmulti");
 
@@ -91,7 +91,7 @@ namespace DEncTests
         [Fact]
         public void GenerateDash_WithManySubtitleLanguages_ProducesSubtitleFiles()
         {
-            Encoder2 encoder = new Encoder2(ffmpegPath, ffprobePath, mp4boxPath);
+            DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath);
             encoder.EnableStreamCopying = true;
             DashConfig config = new DashConfig(multiLanguageTestFileName, RunPath, MultiLanguageQualities, "outputlang");
 
@@ -119,7 +119,7 @@ namespace DEncTests
                         }
             };
 
-            Encoder2 encoder = new Encoder2(ffmpegPath, ffprobePath, mp4boxPath);
+            DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath);
             DashConfig config = new DashConfig("testfile.ogg", RunPath, SubtitleQualities, outputFilename)
             {
                 Options = options

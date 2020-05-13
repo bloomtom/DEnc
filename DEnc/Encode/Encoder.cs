@@ -7,7 +7,6 @@ using System.Diagnostics;
 using DEnc.Serialization;
 using System.Threading;
 using DEnc.Commands;
-using DEnc.Models;
 
 namespace DEnc
 {
@@ -73,7 +72,7 @@ namespace DEnc
     /// <summary>
     /// A construct for performing encode functions.
     /// </summary>
-    public class Encoder2
+    public class Encoder
     {
         /// <summary>
         /// The path to ffmpeg.
@@ -118,7 +117,7 @@ namespace DEnc
         ///<param name="stdoutLog">A callback which reflects stdout of ffmpeg/MP4Box. May be left null.</param>
         ///<param name="stderrLog">A callback used for logging, and for the stderr of ffmpeg/MP4Box. May be left null.</param>
         /// <param name="workingDirectory">A directory to generate output files in. If null, a temp path is used.</param>
-        public Encoder2(string ffmpegPath = "ffmpeg", string ffprobePath = "ffprobe", string boxPath = "MP4Box", Action<string> stdoutLog = null, Action<string> stderrLog = null, string workingDirectory = null)
+        public Encoder(string ffmpegPath = "ffmpeg", string ffprobePath = "ffprobe", string boxPath = "MP4Box", Action<string> stdoutLog = null, Action<string> stderrLog = null, string workingDirectory = null)
         {
             FFmpegPath = ffmpegPath;
             FFprobePath = ffprobePath;
