@@ -12,65 +12,6 @@ using DEnc.Models;
 
 namespace DEnc
 {
-
-    public class DashConfig
-    {
-        public DashConfig(string inputFilePath, string outputDirectory, IEnumerable<IQuality> qualities, string outputFileName = null)
-        {
-            if (inputFilePath == null || !File.Exists(inputFilePath))
-            {
-                throw new FileNotFoundException("Input path does not exist.");
-            }
-
-            if (!Directory.Exists(outputDirectory))
-            {
-                throw new DirectoryNotFoundException("Output directory does not exist.");
-            }
-
-            if(qualities == null)
-            {
-                throw new ArgumentNullException(nameof(qualities));
-            }
-
-            if (!qualities.Any())
-            {
-                throw new ArgumentOutOfRangeException(nameof(qualities), "No qualitied specified. At least one quality is required.");
-            }
-
-            if (qualities.GroupBy(x => x.Bitrate).Count() != qualities.Count())
-            {
-                throw new ArgumentException("Duplicate quality bitrates found. Bitrates must be distinct.", nameof(qualities));
-            }
-
-            Qualities = qualities;
-            InputFilePath = Path.GetFullPath(inputFilePath);  // Map input file to a full path if it's relative.
-            OutputDirectory = outputDirectory;
-
-            if (outputFileName != null)
-            {
-                OutputFileName = Utilities.CleanFileName(outputFileName);
-                if(OutputFileName.Length == 0)
-                {
-                    throw new ArgumentNullException("Output filename is null or empty after removal of illegal characters.");
-                }
-            } 
-            else
-            {
-                string name = Path.GetFileName(inputFilePath);
-                string extension = Path.GetExtension(inputFilePath);
-                OutputFileName = name.Replace(extension, String.Empty);
-            }
-        }
-
-        public string InputFilePath { get; }
-        public string OutputDirectory { get; }
-        public IEnumerable<IQuality> Qualities { get; internal set; }
-        public string OutputFileName { get; }
-        public int Framerate { get; set; } = 0;
-        public int KeyframeInterval { get; set; } = 0;
-        public IEncodeOptions Options { get; set; } = new H264EncodeOptions();
-    }
-
     /// <summary>
     /// A construct for performing encode functions.
     /// </summary>
