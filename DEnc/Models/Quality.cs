@@ -1,44 +1,10 @@
-﻿using System;
+﻿using DEnc.Models.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace DEnc
+namespace DEnc.Models
 {
-    /// <summary>
-    /// An interface for a quality. Qualities are used to specify the outputs for DASHification.
-    /// </summary>
-    public interface IQuality
-    {
-        /// <summary>
-        /// Width of frame in pixels.
-        /// </summary>
-        int Width { get; set; }
-        /// <summary>
-        /// Height of frame in pixels.
-        /// </summary>
-        int Height { get; set; }
-        /// <summary>
-        /// Bitrate of media in kb/s.
-        /// </summary>
-        int Bitrate { get; set; }
-        /// <summary>
-        /// ffmpeg preset (veryfast, fast, medium, slow, veryslow).
-        /// </summary>
-        H264Preset Preset { get; set; }
-        /// <summary>
-        /// ffmpeg h264 encoding profile (Baseline, Main, High,)
-        /// </summary>
-        H264Profile Profile { get; set; }
-        /// <summary>
-        /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
-        /// </summary>
-        string Level { get; set; }
-        /// <summary>
-        /// ffmpeg pixel format or pix_fmt.
-        /// </summary>
-        string PixelFormat { get; set; }
-    }
-
     /// <summary>
     /// A Quality implementation that uses the Bitrate for Equals and GetHashCode, and displays a friendly output for ToString.
     /// </summary>

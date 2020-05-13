@@ -6,6 +6,8 @@ using System.IO;
 using System.Linq;
 using NaiveProgress;
 using System.Threading;
+using DEnc.Models.Interfaces;
+using DEnc.Models;
 
 namespace DEncTests
 {

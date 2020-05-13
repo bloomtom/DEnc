@@ -1,8 +1,9 @@
-﻿using System;
+﻿using DEnc.Models.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace DEnc
+namespace DEnc.Models
 {
     /// <summary>
     /// A set of encoder options for h.264 encoding in ffmpeg using sane defaults. Default values may change over time, so if you require 

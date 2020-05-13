@@ -7,6 +7,8 @@ using System.Diagnostics;
 using DEnc.Serialization;
 using System.Threading;
 using DEnc.Commands;
+using DEnc.Models.Interfaces;
+using DEnc.Models;
 
 namespace DEnc
 {

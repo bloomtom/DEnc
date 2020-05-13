@@ -1,4 +1,6 @@
-﻿using DEnc.Serialization;
+﻿using DEnc.Models;
+using DEnc.Models.Interfaces;
+using DEnc.Serialization;
 using System;
 using System.Collections.Generic;
 using System.IO;

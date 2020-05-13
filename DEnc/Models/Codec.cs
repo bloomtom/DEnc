@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DEnc.Commands
+namespace DEnc.Models
 {
     internal class Codec
     {
