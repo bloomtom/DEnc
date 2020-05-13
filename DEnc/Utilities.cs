@@ -6,6 +6,9 @@ using System.Text;
 
 namespace DEnc
 {
+    /// <summary>
+    /// Common utilities
+    /// </summary>
     public static class Utilities
     {
         public static bool IsStreamValid(this MediaStream stream)

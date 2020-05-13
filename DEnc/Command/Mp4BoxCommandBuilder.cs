@@ -6,6 +6,10 @@ using System.Text;
 
 namespace DEnc.Commands
 {
+    /// <summary>
+    /// Builder for the MP4BoxCommand.
+    /// Used to create the <see cref="Mp4BoxRenderedCommand"/> that's used to generate the MPD manifest
+    /// </summary>
     public static class Mp4BoxCommandBuilder
     {
         /// <summary>
@@ -13,7 +17,7 @@ namespace DEnc.Commands
         /// </summary>
         /// <param name="videoFiles">A collection of full paths and roles to input video files to encode from.</param>
         /// <param name="audioFiles">A collection of full paths and roles to input audio files to encode from.</param>
-        /// <param name="outFilePath">The full path to write the mpd file to.</param>
+        /// <param name="mpdOutputPath">The full path to write the mpd file to.</param>
         /// <param name="keyInterval">The key interval in milliseconds. This can be derived from: (keyframeInterval / framerate) * 1000</param>
         /// <param name="additionalFlags">Additional flags to pass to MP4Box. Should include a profile</param>
         internal static Mp4BoxRenderedCommand BuildMp4boxMpdCommand(

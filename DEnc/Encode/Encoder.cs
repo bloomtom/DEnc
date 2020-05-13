@@ -45,6 +45,9 @@ namespace DEnc
         /// </summary>
         public bool EnableStreamCopying { get; set; } = false;
 
+        /// <summary>
+        /// The stage progress of the process
+        /// </summary>
         public Dictionary<EncodingStage, double> Progress { get; private set; }
 
         private readonly Action<string> stdoutLog;
@@ -82,6 +85,10 @@ namespace DEnc
             }
         }
 
+        /// <summary>
+        /// Obsolete
+        /// </summary>
+        /// <returns></returns>
         [Obsolete("This method has been replaced by a new API", true)]
         public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
             IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
@@ -89,6 +96,14 @@ namespace DEnc
             throw new NotSupportedException();
         }
 
+        /// <summary>
+        /// COnverts the inut file into an MPEG DASH representations. 
+        /// This includes multiple bitrates, subtitle tracks, audio tracks, and an MPD manifest.
+        /// </summary>
+        /// <param name="config"></param>
+        /// <param name="progress"></param>
+        /// <param name="cancel"></param>
+        /// <returns></returns>
         public DashEncodeResult GenerateDash(DashConfig config, IProgress<Dictionary<EncodingStage, double>> progress = null, CancellationToken cancel = default(CancellationToken))
         {
             cancel.ThrowIfCancellationRequested();
