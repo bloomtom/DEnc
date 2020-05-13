@@ -68,6 +68,7 @@ namespace DEnc
     /// </summary>
     public enum H264Preset
     {
+        none = 0,
         /// <summary>
         /// ~55% faster than medium. Extremely low quality.
         /// </summary>
@@ -119,6 +120,7 @@ namespace DEnc
     /// </summary>
     public enum H264Profile
     {
+        none = 0,
         /// <summary>
         /// Ideal for older mobile devices
         /// </summary>

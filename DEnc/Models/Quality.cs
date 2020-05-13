@@ -142,7 +142,7 @@ namespace DEnc.Models
         /// </summary>
         public static Quality GetCopyQuality()
         {
-            return new Quality(0, 0, 0, default(H264Preset));
+            return new Quality(0, 0, 0, H264Preset.none);
         }
 
         /// <summary>

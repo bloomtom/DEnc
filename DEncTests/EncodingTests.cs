@@ -40,8 +40,8 @@ namespace DEncTests
 
         List<Quality> SubtitleQualities => new List<Quality>()
         {
-            new Quality(1280, 720, 9000, H264Preset.ultrafast),
-            new Quality(640, 480, 768, H264Preset.ultrafast)
+            new Quality(1280, 720, 9000, H264Preset.fast),
+            new Quality(640, 480, 768, H264Preset.faster)
         };
 
         List<Quality> MultiLanguageQualities => new List<Quality>() { new Quality(640, 480, 768, H264Preset.ultrafast) };

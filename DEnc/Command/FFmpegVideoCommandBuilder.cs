@@ -81,12 +81,21 @@ namespace DEnc.Commands
 
         public FFmpegVideoCommandBuilder WithPreset(H264Preset preset)
         {
+            if(preset == H264Preset.none)
+            {
+                return this;
+            }
+
             TryAddSimpleCommand($"-preset {preset}", preset.ToString());
             return this;
         }
 
         public FFmpegVideoCommandBuilder WithProfile(H264Profile profile)
         {
+            if (profile == H264Profile.none)
+            {
+                return this;
+            }
             TryAddSimpleCommand($"-profile:v {profile}", profile.ToString());
             return this;
         }

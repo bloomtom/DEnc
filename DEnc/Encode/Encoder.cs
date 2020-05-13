@@ -481,7 +481,7 @@ namespace DEnc
                 var firstVideoStream = videoStreams.FirstOrDefault(x => Constants.SupportedCodecs.ContainsKey(x.codec_name));
                 var firstAudioStream = audioStreams.FirstOrDefault(x => Constants.SupportedCodecs.ContainsKey(x.codec_name));
 
-                if (!decimal.TryParse(firstVideoStream?.r_frame_rate, out decimal framerate)) { framerate = 24; }
+                if (!decimal.TryParse(firstVideoStream?.r_frame_rate, out decimal framerate)) { framerate = 0; }
 
                 float duration = t.format != null ? t.format.duration : 0;
 
