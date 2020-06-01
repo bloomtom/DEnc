@@ -6,6 +6,9 @@ using System.IO;
 using System.Diagnostics;
 using DEnc.Serialization;
 using System.Threading;
+using DEnc.Commands;
+using DEnc.Models.Interfaces;
+using DEnc.Models;
 
 namespace DEnc
 {
@@ -42,6 +45,11 @@ namespace DEnc
         /// </summary>
         public bool EnableStreamCopying { get; set; } = false;
 
+        /// <summary>
+        /// The stage progress of the process
+        /// </summary>
+        public Dictionary<EncodingStage, double> Progress { get; private set; }
+
         private readonly Action<string> stdoutLog;
         private readonly Action<string> stderrLog;
 
@@ -61,6 +69,13 @@ namespace DEnc
             FFprobePath = ffprobePath;
             BoxPath = boxPath;
             WorkingDirectory = workingDirectory ?? Path.GetTempPath();
+            Progress = new Dictionary<EncodingStage, double>()
+            {
+                [EncodingStage.Encode] = 0,
+                [EncodingStage.DASHify] = 0,
+                [EncodingStage.PostProcess] = 0,
+            };
+
             this.stdoutLog = stdoutLog ?? new Action<string>((s) => { });
             this.stderrLog = stderrLog ?? new Action<string>((s) => { });
 
@@ -71,154 +86,193 @@ namespace DEnc
         }
 
         /// <summary>
-        /// Converts the input file into an MPEG DASH representation with multiple bitrates.
+        /// Obsolete
         /// </summary>
-        /// <param name="inFile">The video file to convert. Pass a full path if possible. Otherwise it will be rooted to the application working directory (not the working directory given to this instance).</param>
-        /// <param name="outFilename">The base filename to use for the output files. Files will be overwritten if they exist.</param>
-        /// <param name="framerate">Output video stream framerate. Pass zero to make this automatic based on the input file.</param>
-        /// <param name="keyframeInterval">Output video keyframe interval. Pass zero to make this automatically 3x the framerate.</param>
-        /// <param name="qualities">Parameters to pass to ffmpeg when performing the preparation encoding. Bitrates must be distinct, an exception will be thrown if they are not.</param>
-        /// <param name="options">Options for the ffmpeg encode.</param>
-        /// <param name="outDirectory">The directory to place output files and intermediary files in.</param>
-        /// <param name="progress">A callback for progress events. The collection will contain values with the Name property of "Encode", "DASHify", "Post Process"</param>
-        /// <param name="cancel">Allows cancellation of the operation.</param>
-        /// <returns>An object containing a representation of the generated MPD file, it's path, and the associated filenames, or null if no file generated.</returns>
+        /// <returns></returns>
+        [Obsolete("This method has been replaced by a new API", true)]
         public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
             IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
         {
+            throw new NotSupportedException();
+        }
+
+        /// <summary>
+        /// oOnverts the input file into an MPEG DASH representations. 
+        /// This includes multiple bitrates, subtitle tracks, audio tracks, and an MPD manifest.
+        /// </summary>
+        /// <param name="config"></param>
+        /// <param name="progress"></param>
+        /// <param name="cancel"></param>
+        /// <returns></returns>
+        public DashEncodeResult GenerateDash(DashConfig config, IProgress<Dictionary<EncodingStage, double>> progress = null, CancellationToken cancel = default(CancellationToken))
+        {
             cancel.ThrowIfCancellationRequested();
-
-            options = options ?? new H264EncodeOptions();
-            outDirectory = outDirectory ?? WorkingDirectory;
-
-            // Input validation.
-            if (inFile == null || !File.Exists(inFile))
+            if (!Directory.Exists(WorkingDirectory))
             {
-                throw new FileNotFoundException("Input path does not exist.");
-            }
-            if (!Directory.Exists(outDirectory))
-            {
-                throw new DirectoryNotFoundException("Output directory does not exist.");
-            }
-            if (string.IsNullOrEmpty(outFilename))
-            {
-                throw new ArgumentNullException("Output filename is null or empty.");
-            }
-            if (qualities == null || qualities.Count() == 0)
-            {
-                throw new ArgumentOutOfRangeException("No qualitied specified. At least one quality is required.");
+                throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
             }
 
-            // Map input file to a full path if it's relative.
-            inFile = Path.GetFullPath(inFile);
+            //Field declarations
+            MediaMetadata inputStats;
+            IQuality compareQuality;
+            int inputBitrate;
+            bool enableStreamCopy = false;
 
-            // Check for invalid characters and remove them.
-            outFilename = RemoveSymbols(outFilename, '#', '&', '*', '<', '>', '/', '?', ':', '"', '%');
-            // Another check to ensure we didn't remove all the characters.
-            if (outFilename.Length == 0)
-            {
-                throw new ArgumentNullException("Output filename is null or empty.");
-            }
-
-            // Check bitrate distinction.
-            if (qualities.GroupBy(x => x.Bitrate).Count() != qualities.Count())
-            {
-                throw new ArgumentOutOfRangeException("Duplicate bitrates found. Bitrates must be distinct.");
-            }
-
-            var inputStats = ProbeFile(inFile);
+            inputStats = ProbeFile(config.InputFilePath);
             if (inputStats == null) { throw new NullReferenceException("ffprobe query returned a null result."); }
-            int inputBitrate = (int)(inputStats.Bitrate / 1024);
+
+            inputBitrate = (int)(inputStats.Bitrate / 1024);
             if (!DisableQualityCrushing)
             {
-                qualities = QualityCrusher.CrushQualities(qualities, inputBitrate);
+                config.Qualities = QualityCrusher.CrushQualities(config.Qualities, inputBitrate);
             }
-            var compareQuality = qualities.First();
-            bool enableStreamCopy = EnableStreamCopying && compareQuality.Bitrate == 0 &&
-                Copyable264Infer.DetermineCopyCanBeDone(compareQuality.PixelFormat, compareQuality.Level, compareQuality.Profile, inputStats.VideoStreams);
+            compareQuality = config.Qualities.First();
 
-            var progressList = new List<EncodeStageProgress>()
-            {
-                new EncodeStageProgress("Encode", 0),
-                new EncodeStageProgress("DASHify", 0),
-                new EncodeStageProgress("Post Process", 0)
-            };
-            const int encodeStage = 0;
-            const int dashStage = 1;
-            const int postStage = 2;
 
-            var stdErrShim = stderrLog;
-            if (progress != null)
+            if (EnableStreamCopying && compareQuality.Bitrate == 0)
             {
-                stdErrShim = new Action<string>(x =>
+                enableStreamCopy = Copyable264Infer.DetermineCopyCanBeDone(compareQuality.PixelFormat, compareQuality.Level, compareQuality.Profile.ToString(), inputStats.VideoStreams);
+            }
+
+            // Set the framerate interval to match input if user has not already set
+            if (config.Framerate <= 0)
+            {
+                config.Framerate = (int)Math.Round(inputStats.Framerate);
+            }
+
+            // Set the keyframe interval to match input if user has not already set
+            if (config.KeyframeInterval <= 0)
+            {
+                config.KeyframeInterval = config.Framerate * 3;
+            }
+
+            //This is not really the proper place to have this
+            // Logging shim for ffmpeg to get progress info
+            var ffmpegLogShim = new Action<string>(x =>
+            {
+                if (x != null)
+                {
+                    var match = Encode.Regexes.ParseProgress.Match(x);
+                    if (match.Success && TimeSpan.TryParse(match.Value, out TimeSpan p))
+                    {
+                        stdoutLog(x);
+                        float progressFloat = Math.Min(1, (float)(p.TotalMilliseconds / 1000) / inputStats.Duration);
+                        if (progress != null)
+                        {
+                            ReportProgress(progress, EncodingStage.Encode, progressFloat);
+                        }
+                            
+                    }
+                    else
+                    {
+                        stderrLog(x);
+                    }
+                }
+                else
                 {
                     stderrLog(x);
-                    if (x != null)
-                    {
-                        var match = Encode.Regexes.ParseProgress.Match(x);
-                        if (match.Success && TimeSpan.TryParse(match.Value, out TimeSpan p))
-                        {
-                            ReportProgress(progress, progressList, encodeStage, Math.Min(1, (float)(p.TotalMilliseconds / 1000) / inputStats.Duration));
-                        }
-                    }
-                });
-            }
-
-            framerate = framerate <= 0 ? (int)Math.Round(inputStats.Framerate) : framerate;
-            keyframeInterval = keyframeInterval <= 0 ? framerate * 3 : keyframeInterval;
-
-            // Build task definitions.
-            var ffmpegCommand = CommandBuilder.BuildFfmpegCommand(
-                inPath: inFile,
-                outDirectory: WorkingDirectory,
-                outFilename: outFilename,
-                options: options,
-                framerate: framerate,
-                keyframeInterval: keyframeInterval,
-                qualities: qualities.OrderByDescending(x => x.Bitrate),
-                metadata: inputStats,
-                defaultBitrate: inputBitrate,
-                enableStreamCopying: enableStreamCopy);
+                }
+            });
 
             cancel.ThrowIfCancellationRequested();
+            FfmpegRenderedCommand ffmpgCommand = EncodeVideo(config, inputStats, inputBitrate, enableStreamCopy, ffmpegLogShim, cancel);
+            if (ffmpgCommand is null)
+            {
+                return null;
+            }
+
+            Mp4BoxRenderedCommand mp4BoxCommand = GenerateDashManifest(config, ffmpgCommand.VideoPieces, ffmpgCommand.AudioPieces, cancel);
+            if (mp4BoxCommand is null)
+            {
+                return null;
+            }
+
+            ReportProgress(progress, EncodingStage.DASHify, 1);
+            ReportProgress(progress, EncodingStage.PostProcess, 0.3);
+
+            int maxFileIndex = ffmpgCommand.AllPieces.Max(x => x.Index);
+            List<StreamSubtitleFile> allSubtitles = ProcessSubtitles(config, ffmpgCommand.SubtitlePieces, maxFileIndex + 1);
+
+            ReportProgress(progress, EncodingStage.PostProcess, 0.66);
+
+            try
+            {
+                string mpdFilepath = mp4BoxCommand.MpdPath;
+                if (File.Exists(mpdFilepath))
+                {
+                    MPD mpd = PostProcessMpdFile(mpdFilepath, allSubtitles);
+
+                    var result = new DashEncodeResult(mpd, inputStats.Metadata, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), mpdFilepath);
+
+                    // Success.
+                    return result;
+                }
+
+                stderrLog.Invoke($"ERROR: MP4Box did not produce the expected mpd file at path {mpdFilepath}. File: {config.InputFilePath}");
+                return null;
+            }
+            finally
+            {
+                ReportProgress(progress, EncodingStage.PostProcess, 1);
+            }
+        }
+
+        private FfmpegRenderedCommand EncodeVideo(DashConfig config, MediaMetadata inputStats, int inputBitrate, bool enableStreamCopying, Action<string> progressCallback, CancellationToken cancel)
+        {
+            FfmpegRenderedCommand ffmpegCommand = FFmpegCommandBuilder 
+                .Initilize(
+                    inPath: config.InputFilePath,
+                    outDirectory: config.OutputDirectory,
+                    outBaseFilename: config.OutputFileName,
+                    options: config.Options,
+                    enableStreamCopying: enableStreamCopying
+                 )
+                .WithVideoCommands(inputStats.VideoStreams, config.Qualities, config.Framerate, config.KeyframeInterval, inputBitrate)
+                .WithAudioCommands(inputStats.AudioStreams)
+                .WithSubtitleCommands(inputStats.SubtitleStreams)
+                .Build();
 
             // Generate intermediates
             try
             {
                 ExecutionResult ffResult;
                 stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.RenderedCommand}");
-                ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, stdErrShim, cancel);
+                ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, progressCallback, cancel); //TODO: Use a better log/error callback mechanism? Also use a better progress mechanism
 
                 // Detect error in ffmpeg process and cleanup, then return null.
                 if (ffResult.ExitCode != 0)
                 {
-                    stderrLog.Invoke($"ERROR: ffmpeg returned code {ffResult.ExitCode}. File: {inFile}");
-                    CleanOutputFiles(ffmpegCommand.CommandPieces.Select(x => x.Path));
+                    stderrLog.Invoke($"ERROR: ffmpeg returned code {ffResult.ExitCode}. File: {config.InputFilePath}");
+                    CleanOutputFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
                     return null;
                 }
             }
             catch (Exception ex)
             {
-                CleanOutputFiles(ffmpegCommand.CommandPieces.Select(x => x.Path));
+                CleanOutputFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
 
                 if (ex is OperationCanceledException)
                 {
-                    throw new OperationCanceledException($"Exception running ffmpeg on {inFile}", ex);
+                    throw new OperationCanceledException($"Exception running ffmpeg on {config.InputFilePath}", ex);
                 }
                 else
                 {
-                    throw new Exception($"Exception running ffmpeg on {inFile}", ex);
+                    throw new Exception($"Exception running ffmpeg on {config.InputFilePath}", ex);
                 }
             }
 
+            return ffmpegCommand;
+        }
 
-            var audioVideoFiles = ffmpegCommand.CommandPieces.Where(x => x.Type == StreamType.Video || x.Type == StreamType.Audio);
-
-            var mp4boxCommand = CommandBuilder.BuildMp4boxMpdCommand(
-                inFiles: audioVideoFiles,
-                outFilePath: Path.Combine(outDirectory, outFilename) + ".mpd",
-                keyInterval: (keyframeInterval / framerate) * 1000,
-                flags: options.AdditionalMP4BoxFlags);
+        private Mp4BoxRenderedCommand GenerateDashManifest(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles, CancellationToken cancel)
+        {
+            string mpdOutputPath = Path.Combine(config.OutputDirectory, config.OutputFileName) + ".mpd";
+            var mp4boxCommand = Mp4BoxCommandBuilder.BuildMp4boxMpdCommand(
+                videoFiles: videoFiles,
+                audioFiles: audioFiles,
+                mpdOutputPath: mpdOutputPath,
+                keyInterval: (config.KeyframeInterval / config.Framerate) * 1000,
+                additionalFlags: config.Options.AdditionalMP4BoxFlags);
 
             // Generate DASH files.
             ExecutionResult mpdResult;
@@ -226,122 +280,95 @@ namespace DEnc
             try
             {
                 mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog, cancel);
+                
+                // Dash Failed TODO: Add in Progress report behavior that was excluded from this
+                // Detect error in MP4Box process and cleanup, then return null.
+                if (mpdResult.ExitCode != 0)
+                {
+                    MPD mpdFile = MPD.LoadFromFile(mpdOutputPath);
+                    var filePaths = mpdFile.GetFileNames().Select(x => Path.Combine(config.OutputDirectory, x));
+
+                    stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}. File: {config.InputFilePath}");
+                    CleanOutputFiles(filePaths);
+                    CleanOutputFiles(mpdResult.Output);
+
+                    return null;
+                }
             }
             catch (Exception ex)
             {
-                CleanOutputFiles(audioVideoFiles.Select(x => x.Path));
-
                 if (ex is OperationCanceledException)
                 {
-                    throw new OperationCanceledException($"Exception running MP4box on {inFile}", ex);
+                    throw new OperationCanceledException($"Exception running MP4box on {config.InputFilePath}", ex);
                 }
                 else
                 {
-                    throw new Exception($"Exception running MP4box on {inFile}", ex);
+                    throw new Exception($"Exception running MP4box on {config.InputFilePath}", ex);
                 }
             }
-
-            // Report DASH complete.
-            if (mpdResult.ExitCode == 0)
+            finally
             {
-                ReportProgress(progress, progressList, dashStage, 1);
+                CleanOutputFiles(videoFiles.Select(x => x.Path));
+                CleanOutputFiles(audioFiles.Select(x => x.Path));
             }
 
-            // Cleanup intermediates.
-            CleanOutputFiles(audioVideoFiles.Select(x => x.Path));
+            return mp4boxCommand;
+        }
 
-            ReportProgress(progress, progressList, postStage, 0.33);
-
+        /// <summary>
+        /// Processes the media subtitles and finds and handles external subtitle files
+        /// </summary>
+        /// <param name="config">The <see cref="DashConfig"/></param>
+        /// <param name="subtitleFiles">The subtitle stream files</param>
+        /// <param name="startFileIndex">The index additional subtitles need to start at. This should be the max index of the ffmpeg pieces +1</param>
+        private List<StreamSubtitleFile> ProcessSubtitles(DashConfig config, IEnumerable<StreamSubtitleFile> subtitleFiles, int startFileIndex)
+        {
             // Move subtitles found in media
-            List<StreamFile> subtitles = new List<StreamFile>();
-            foreach (var subFile in ffmpegCommand.CommandPieces.Where(x => x.Type == StreamType.Subtitle))
+            List<StreamSubtitleFile> subtitles = new List<StreamSubtitleFile>();
+            foreach (var subFile in subtitleFiles)
             {
                 string oldPath = subFile.Path;
-                subFile.Path = Path.Combine(outDirectory, Path.GetFileName(subFile.Path));
+                subFile.Path = Path.Combine(config.OutputDirectory, Path.GetFileName(subFile.Path));
                 subtitles.Add(subFile);
                 if (oldPath != subFile.Path)
                 {
-                    if (File.Exists(subFile.Path)) { File.Delete(subFile.Path); }
+                    if (File.Exists(subFile.Path)) 
+                    { 
+                        File.Delete(subFile.Path); 
+                    }
                     File.Move(oldPath, subFile.Path);
                 }
             }
+
             // Add external subtitles
-            int originIndex = ffmpegCommand.CommandPieces.Max(x => x.Origin) + 1;
-            string baseFilename = Path.GetFileNameWithoutExtension(inFile);
-            foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(inFile), baseFilename + "*", SearchOption.TopDirectoryOnly))
+            string baseFilename = Path.GetFileNameWithoutExtension(config.InputFilePath);
+            foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(config.InputFilePath), baseFilename + "*", SearchOption.TopDirectoryOnly))
             {
                 if (vttFile.EndsWith(".vtt"))
                 {
                     string vttFilename = Path.GetFileName(vttFile);
                     string vttName = GetSubtitleName(vttFilename);
-                    string vttOutputPath = Path.Combine(outDirectory, $"{outFilename}_subtitle_{vttName}_{originIndex}.vtt");
+                    string vttOutputPath = Path.Combine(config.OutputDirectory, $"{config.OutputFileName}_subtitle_{vttName}_{startFileIndex}.vtt");
 
-                    var subFile = new StreamFile()
+                    var subFile = new StreamSubtitleFile()
                     {
                         Type = StreamType.Subtitle,
-                        Origin = originIndex,
+                        Index = startFileIndex,
                         Path = vttOutputPath,
-                        Name = $"{vttName}_{originIndex}"
+                        Language = $"{vttName}_{startFileIndex}"
                     };
-                    originIndex++;
+                    startFileIndex++;
                     File.Copy(vttFile, vttOutputPath, true);
                     subtitles.Add(subFile);
                 }
             }
 
-            ReportProgress(progress, progressList, postStage, 0.66);
-
-            try
-            {
-                string mpdFilepath = mp4boxCommand.CommandPieces.FirstOrDefault().Path;
-                if (File.Exists(mpdFilepath))
-                {
-                    MPD mpd = PostProcessMpdFile(mpdFilepath, subtitles);
-
-                    var result = new DashEncodeResult(mpd, inputStats.Metadata, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), mpdFilepath);
-
-                    // Detect error in MP4Box process and cleanup, then return null.
-                    if (mpdResult.ExitCode != 0)
-                    {
-                        stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}. File: {inFile}");
-                        CleanOutputFiles(result.MediaFiles.Select(x => Path.Combine(outDirectory, x)));
-                        CleanOutputFiles(mpdResult.Output);
-
-                        return null;
-                    }
-
-                    // Success.
-                    return result;
-                }
-
-                stderrLog.Invoke($"ERROR: MP4Box did not produce the expected mpd file at path {mpdFilepath}. File: {inFile}");
-                return null;
-            }
-            finally
-            {
-                ReportProgress(progress, progressList, postStage, 1);
-            }
+            return subtitles;
         }
-
-        private string RemoveSymbols(string outFilename, params char[] symbols)
+        private void ReportProgress(IProgress<Dictionary<EncodingStage, double>> reporter, EncodingStage stage, double value)
         {
-            bool charsRemoved = false;
-            var sb = new System.Text.StringBuilder();
-            foreach (char c in outFilename)
-            {
-                if (symbols.Contains(c))
-                {
-                    charsRemoved = true;
-                    continue;
-                }
-                sb.Append(c);
-            }
-            if (charsRemoved)
-            {
-                stderrLog($"outfilename contained one or more invalid characters, which were removed.");
-            }
-
-            return sb.ToString();
+            Progress[stage] = value;
+            reporter?.Report(Progress);
         }
 
         private static string GetSubtitleName(string vttFilename)
@@ -351,7 +378,7 @@ namespace DEnc
                 var dotComponents = vttFilename.Split('.');
                 foreach (var component in dotComponents)
                 {
-                    if (LanguageCodes.Languages.TryGetValue(component, out string languageName))
+                    if (Constants.Languages.TryGetValue(component, out string languageName))
                     {
                         return languageName;
                     }
@@ -360,17 +387,11 @@ namespace DEnc
             return "und";
         }
 
-        private static void ReportProgress(IProgress<IEnumerable<EncodeStageProgress>> reporter, List<EncodeStageProgress> progresses, int index, double value)
-        {
-            progresses[index] = new EncodeStageProgress(progresses[index].Name, value);
-            reporter?.Report(progresses);
-        }
-
         /// <summary>
         /// Performs on-disk post processing of the generated MPD file.
         /// Subtitles are added, useless tags removed, etc.
         /// </summary>
-        private static MPD PostProcessMpdFile(string filepath, List<StreamFile> subtitles)
+        private static MPD PostProcessMpdFile(string filepath, List<StreamSubtitleFile> subtitles)
         {
             MPD.LoadFromFile(filepath, out MPD mpd, out Exception ex);
             mpd.ProgramInformation = null;
@@ -387,7 +408,7 @@ namespace DEnc
                     period.AdaptationSet.Add(new AdaptationSet()
                     {
                         MimeType = "text/vtt",
-                        Lang = sub.Name,
+                        Lang = sub.Language,
                         ContentType = "text",
                         Representation = new List<Representation>()
                         {
@@ -404,7 +425,7 @@ namespace DEnc
                         Role = new DescriptorType()
                         {
                             SchemeIdUri = "urn:gpac:dash:role:2013",
-                            Value = $"{sub.Name} {representationId.ToString()}"
+                            Value = $"{sub.Language} {representationId.ToString()}"
                         }
                     });
                     representationId++;
@@ -457,10 +478,10 @@ namespace DEnc
                     }
                 }
 
-                var firstVideoStream = videoStreams.FirstOrDefault(x => CommandBuilder.SupportedCodecs.ContainsKey(x.codec_name));
-                var firstAudioStream = audioStreams.FirstOrDefault(x => CommandBuilder.SupportedCodecs.ContainsKey(x.codec_name));
+                var firstVideoStream = videoStreams.FirstOrDefault(x => Constants.SupportedCodecs.ContainsKey(x.codec_name));
+                var firstAudioStream = audioStreams.FirstOrDefault(x => Constants.SupportedCodecs.ContainsKey(x.codec_name));
 
-                if (!decimal.TryParse(firstVideoStream?.r_frame_rate, out decimal framerate)) { framerate = 24; }
+                if (!decimal.TryParse(firstVideoStream?.r_frame_rate, out decimal framerate)) { framerate = 0; }
 
                 float duration = t.format != null ? t.format.duration : 0;
 

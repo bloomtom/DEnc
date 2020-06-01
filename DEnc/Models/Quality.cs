@@ -1,71 +1,10 @@
-﻿using System;
+﻿using DEnc.Models.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace DEnc
+namespace DEnc.Models
 {
-    /// <summary>
-    /// Some example qualities.
-    /// </summary>
-    public enum DefaultQuality
-    {
-        /// <summary>
-        /// Very low quality. Low grade SD to low grade HD
-        /// </summary>
-        potato,
-        /// <summary>
-        /// Low quality HD.
-        /// </summary>
-        low,
-        /// <summary>
-        /// Decent quality HD.
-        /// </summary>
-        medium,
-        /// <summary>
-        /// Good quality HD.
-        /// </summary>
-        high,
-        /// <summary>
-        /// Excellend quality HD
-        /// </summary>
-        ultra
-    }
-
-    /// <summary>
-    /// An interface for a quality. Qualities are used to specify the outputs for DASHification.
-    /// </summary>
-    public interface IQuality
-    {
-        /// <summary>
-        /// Width of frame in pixels.
-        /// </summary>
-        int Width { get; set; }
-        /// <summary>
-        /// Height of frame in pixels.
-        /// </summary>
-        int Height { get; set; }
-        /// <summary>
-        /// Bitrate of media in kb/s.
-        /// </summary>
-        int Bitrate { get; set; }
-        /// <summary>
-        /// ffmpeg preset (veryfast, fast, medium, slow, veryslow).
-        /// </summary>
-        string Preset { get; set; }
-        /// <summary>
-        /// ffmpeg h264 encoding profile (Baseline, Main, High,)
-        /// </summary>
-        string Profile { get; set; }
-        /// <summary>
-        /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
-        /// </summary>
-        string Level { get; set; }
-        /// <summary>
-        /// ffmpeg pixel format or pix_fmt.
-        /// </summary>
-        string PixelFormat { get; set; }
-    }
-
     /// <summary>
     /// A Quality implementation that uses the Bitrate for Equals and GetHashCode, and displays a friendly output for ToString.
     /// </summary>
@@ -86,11 +25,11 @@ namespace DEnc
         /// <summary>
         /// ffmpeg preset (veryfast, fast, medium, slow, veryslow).
         /// </summary>
-        public string Preset { get; set; } = "medium";
+        public H264Preset Preset { get; set; } = H264Preset.medium;
         /// <summary>
         /// ffmpeg h264 encoding profile (Baseline, Main, High,)
         /// </summary>
-        public string Profile { get; set; } = "high";
+        public H264Profile Profile { get; set; } = H264Profile.high;
         /// <summary>
         /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
         /// </summary>
@@ -114,13 +53,27 @@ namespace DEnc
         /// <param name="width">Width of frame in pixels</param>
         /// <param name="height">Height of frame in pixels</param>
         /// <param name="bitrate">The bitrate in kb/s</param>
-        /// <param name="preset">ffmpeg preset</param>
-        public Quality(int width, int height, int bitrate, string preset)
+        /// <param name="preset">h264 preset</param>
+        public Quality(int width, int height, int bitrate, H264Preset preset)
         {
             Width = width;
             Height = height;
             Bitrate = bitrate;
             Preset = preset;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="width">Width of frame in pixels</param>
+        /// <param name="height">Height of frame in pixels</param>
+        /// <param name="bitrate">The bitrate in kb/s</param>
+        /// <param name="preset">h264 preset</param>
+        /// <param name="profile">h264 profile</param>
+        public Quality(int width, int height, int bitrate, H264Preset preset, H264Profile profile)
+            :this(width, height, bitrate, preset)
+        {
+            Profile = profile;
         }
 
         /// <summary>
@@ -138,7 +91,7 @@ namespace DEnc
         /// <param name="q"></param>
         /// <param name="preset"></param>
         /// <returns></returns>
-        public static IEnumerable<IQuality> GenerateDefaultQualities(DefaultQuality q, string preset)
+        public static IEnumerable<IQuality> GenerateDefaultQualities(DefaultQuality q, H264Preset preset)
         {
             switch (q)
             {
@@ -189,7 +142,7 @@ namespace DEnc
         /// </summary>
         public static Quality GetCopyQuality()
         {
-            return new Quality(0, 0, 0, "");
+            return new Quality(0, 0, 0, H264Preset.none);
         }
 
         /// <summary>
