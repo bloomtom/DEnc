@@ -21,8 +21,9 @@ namespace DEncTests
         const string subtitleTestFileName = "test5.mkv";
         const string multiLanguageTestFileName = "testlang.mp4";
 
-        List<DashEncodeResult> encodeResults;
+        readonly List<DashEncodeResult> encodeResults;
         DashEncodeResult encodeResult;
+        private bool disposedValue;
 
         public EncodingTests()
         {
@@ -73,8 +74,10 @@ namespace DEncTests
         [Fact]
         public void GenerateDash_WithManySubtitles_ProducesSubtitleFiles()
         {
-            DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath);
-            encoder.EnableStreamCopying = true;
+            DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath)
+            {
+                EnableStreamCopying = true
+            };
             DashConfig config = new DashConfig(subtitleTestFileName, RunPath, SubtitleQualities, "outputmulti");
 
             encodeResult = encoder.GenerateDash(config);
@@ -92,8 +95,10 @@ namespace DEncTests
         [Fact]
         public void GenerateDash_WithManySubtitleLanguages_ProducesSubtitleFiles()
         {
-            DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath);
-            encoder.EnableStreamCopying = true;
+            DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath)
+            {
+                EnableStreamCopying = true
+            };
             DashConfig config = new DashConfig(multiLanguageTestFileName, RunPath, MultiLanguageQualities, "outputlang");
 
             encodeResult = encoder.GenerateDash(config);
@@ -142,33 +147,55 @@ namespace DEncTests
             }
         }
 
-        public void Dispose()
+        protected virtual void Dispose(bool disposing)
         {
-            if(encodeResult != null)
+            if (!disposedValue)
             {
-                encodeResults.Add(encodeResult);
-            }
-
-            foreach (var result in encodeResults)
-            {
-                if (result?.DashFilePath != null)
+                if (disposing)
                 {
-                    string basePath = Path.GetDirectoryName(result.DashFilePath);
-                    if (File.Exists(result.DashFilePath))
+                    if (encodeResult != null)
                     {
-                        File.Delete(result.DashFilePath);
+                        encodeResults.Add(encodeResult);
                     }
 
-                    foreach (var file in result.MediaFiles)
+                    foreach (var result in encodeResults)
                     {
-                        try
+                        if (result?.DashFilePath != null)
                         {
-                            File.Delete(Path.Combine(basePath, file));
+                            string basePath = Path.GetDirectoryName(result.DashFilePath);
+                            if (File.Exists(result.DashFilePath))
+                            {
+                                File.Delete(result.DashFilePath);
+                            }
+
+                            var exList = new List<Exception>();
+                            foreach (var file in result.MediaFiles)
+                            {
+                                try
+                                {
+                                    File.Delete(Path.Combine(basePath, file));
+                                }
+                                catch (Exception ex)
+                                {
+                                    exList.Add(ex);
+                                }
+                            }
+                            if (exList.Count > 0)
+                            {
+                                throw new Exception("Exceptions thrown during cleanup: " + string.Join("\n", exList));
+                            }
                         }
-                        catch (Exception) { }
                     }
                 }
+
+                disposedValue = true;
             }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
