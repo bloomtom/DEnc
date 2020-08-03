@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace DEnc
 {
@@ -11,28 +10,6 @@ namespace DEnc
     /// </summary>
     public class DashEncodeResult
     {
-        /// <summary>
-        /// This is the exact mpd content deserialized from XML.
-        /// </summary>
-        public MPD DashFileContent { get; protected set; }
-        /// <summary>
-        /// Arbitrary metadata about the output streams.
-        /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; private set; }
-        /// <summary>
-        /// The play duration of the media.
-        /// </summary>
-        public TimeSpan FileDuration { get; protected set; }
-        /// <summary>
-        /// The exact path to the mpd file.
-        /// </summary>
-        public string DashFilePath { get; protected set; }
-
-        /// <summary>
-        /// Returns the list of media filenames from the DashFileContent. This operation scans the MPD object and isn't cached. Does not return filenames when a live profile is used.
-        /// </summary>
-        public IEnumerable<string> MediaFiles => DashFileContent?.Period.SelectMany(x => x.AdaptationSet.SelectMany(y => y.Representation.SelectMany(z => z.BaseURL)));
-
         /// <summary>
         /// Create a typical instance of DashEncodeResult.
         /// </summary>
@@ -47,5 +24,30 @@ namespace DEnc
             FileDuration = duration;
             DashFilePath = path;
         }
+
+        /// <summary>
+        /// This is the exact mpd content deserialized from XML.
+        /// </summary>
+        public MPD DashFileContent { get; protected set; }
+
+        /// <summary>
+        /// The exact path to the mpd file.
+        /// </summary>
+        public string DashFilePath { get; protected set; }
+
+        /// <summary>
+        /// The play duration of the media.
+        /// </summary>
+        public TimeSpan FileDuration { get; protected set; }
+
+        /// <summary>
+        /// Returns the list of media filenames from the DashFileContent. This operation scans the MPD object and isn't cached. Does not return filenames when a live profile is used.
+        /// </summary>
+        public IEnumerable<string> MediaFiles => DashFileContent?.Period.SelectMany(x => x.AdaptationSet.SelectMany(y => y.Representation.SelectMany(z => z.BaseURL)));
+
+        /// <summary>
+        /// Arbitrary metadata about the output streams.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> Metadata { get; private set; }
     }
 }

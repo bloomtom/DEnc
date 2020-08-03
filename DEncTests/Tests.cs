@@ -1,39 +1,14 @@
-using System;
-using Xunit;
 using DEnc;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using NaiveProgress;
-using System.Threading;
-using DEnc.Models.Interfaces;
 using DEnc.Models;
+using DEnc.Models.Interfaces;
+using System.Collections.Generic;
+using System.Linq;
+using Xunit;
 
 namespace DEncTests
 {
     public class Tests
     {
-        [Fact]
-        public void TestCopyableInferLevels()
-        {
-            Assert.True(Copyable264Infer.CompareLevels("4.2", 42));
-            Assert.False(Copyable264Infer.CompareLevels("4.1", 42));
-            Assert.True(Copyable264Infer.CompareLevels("1.0", 10));
-            Assert.False(Copyable264Infer.CompareLevels("1.0", 15));
-        }
-
-        [Fact]
-        public void TestCopyableInferProfiles()
-        {
-            Assert.True(Copyable264Infer.CompareProfiles("Main", "baseline"));
-            Assert.True(Copyable264Infer.CompareProfiles("main", "main"));
-            Assert.True(Copyable264Infer.CompareProfiles("High 10", "High"));
-            Assert.True(Copyable264Infer.CompareProfiles("High444", "High 10"));
-            Assert.False(Copyable264Infer.CompareProfiles("High", "High 10"));
-            Assert.False(Copyable264Infer.CompareProfiles("High", "High10"));
-            Assert.False(Copyable264Infer.CompareProfiles("main", "High 422"));
-        }
-
         [Fact]
         public void TestCopyableInfer()
         {
@@ -59,6 +34,26 @@ namespace DEncTests
                 }));
         }
 
+        [Fact]
+        public void TestCopyableInferLevels()
+        {
+            Assert.True(Copyable264Infer.CompareLevels("4.2", 42));
+            Assert.False(Copyable264Infer.CompareLevels("4.1", 42));
+            Assert.True(Copyable264Infer.CompareLevels("1.0", 10));
+            Assert.False(Copyable264Infer.CompareLevels("1.0", 15));
+        }
+
+        [Fact]
+        public void TestCopyableInferProfiles()
+        {
+            Assert.True(Copyable264Infer.CompareProfiles("Main", "baseline"));
+            Assert.True(Copyable264Infer.CompareProfiles("main", "main"));
+            Assert.True(Copyable264Infer.CompareProfiles("High 10", "High"));
+            Assert.True(Copyable264Infer.CompareProfiles("High444", "High 10"));
+            Assert.False(Copyable264Infer.CompareProfiles("High", "High 10"));
+            Assert.False(Copyable264Infer.CompareProfiles("High", "High10"));
+            Assert.False(Copyable264Infer.CompareProfiles("main", "High 422"));
+        }
         [Fact]
         public void TestQualityCrushing()
         {

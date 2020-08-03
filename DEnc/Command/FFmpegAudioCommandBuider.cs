@@ -1,32 +1,21 @@
 ﻿using DEnc.Models;
-using DEnc.Models.Interfaces;
 using DEnc.Serialization;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace DEnc.Commands
 {
     internal class FFmpegAudioCommandBuilder
     {
-        List<string> commands;
-
-        MediaStream audioStream;
-        string outputDirectory;
-        string outputBaseFilename;
-        bool codecSupported;
-
-        string path;
-        string language;
-        string title;
-
-        public static FFmpegAudioCommandBuilder Initilize(MediaStream audioStream, string outputDirectory, string outputBaseFilename, ICollection<string> additionalFlags)
-        {
-            FFmpegAudioCommandBuilder builder = new FFmpegAudioCommandBuilder(audioStream, outputDirectory, outputBaseFilename, additionalFlags);
-            return builder;
-        }
+        private readonly MediaStream audioStream;
+        private readonly bool codecSupported;
+        private readonly List<string> commands;
+        private readonly string outputBaseFilename;
+        private readonly string outputDirectory;
+        private string language;
+        private string path;
+        private string title;
 
         private FFmpegAudioCommandBuilder(MediaStream audioStream, string outputDirectory, string outputBaseFilename, ICollection<string> additionalFlags)
         {
@@ -44,6 +33,11 @@ namespace DEnc.Commands
             }
         }
 
+        public static FFmpegAudioCommandBuilder Initilize(MediaStream audioStream, string outputDirectory, string outputBaseFilename, ICollection<string> additionalFlags)
+        {
+            FFmpegAudioCommandBuilder builder = new FFmpegAudioCommandBuilder(audioStream, outputDirectory, outputBaseFilename, additionalFlags);
+            return builder;
+        }
         public StreamAudioFile Build()
         {
             path = Path.Combine(outputDirectory, $"{outputBaseFilename}_audio_{language}_{audioStream.index}.mp4");
@@ -57,6 +51,16 @@ namespace DEnc.Commands
                 Path = path,
                 Argument = string.Join(" ", commands)
             };
+        }
+
+        public FFmpegAudioCommandBuilder WithCodec()
+        {
+            if (codecSupported)
+            {
+                return this;
+            }
+            commands.Add($"-c:a aac -b:a {audioStream.bit_rate * 1.1}");
+            return this;
         }
 
         public FFmpegAudioCommandBuilder WithLanguage()
@@ -88,16 +92,5 @@ namespace DEnc.Commands
             this.title = title;
             return this;
         }
-
-        public FFmpegAudioCommandBuilder WithCodec()
-        {
-            if (codecSupported)
-            {
-                return this;
-            }
-            commands.Add($"-c:a aac -b:a {audioStream.bit_rate * 1.1}");
-            return this;
-        }
     }
-
 }

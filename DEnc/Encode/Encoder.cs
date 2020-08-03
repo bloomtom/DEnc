@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.IO;
-using System.Diagnostics;
-using DEnc.Serialization;
-using System.Threading;
-using DEnc.Commands;
-using DEnc.Models.Interfaces;
+﻿using DEnc.Commands;
 using DEnc.Models;
+using DEnc.Models.Interfaces;
+using DEnc.Serialization;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
 
 namespace DEnc
 {
@@ -17,41 +15,9 @@ namespace DEnc
     /// </summary>
     public class Encoder
     {
-        /// <summary>
-        /// The path to ffmpeg.
-        /// </summary>
-        public string FFmpegPath { get; private set; }
-        /// <summary>
-        /// The path to ffprobe.
-        /// </summary>
-        public string FFprobePath { get; private set; }
-        /// <summary>
-        /// The path to MP4Box.
-        /// </summary>
-        public string BoxPath { get; private set; }
-        /// <summary>
-        /// The temp path to store encodes in progress.
-        /// </summary>
-        public string WorkingDirectory { get; private set; }
-
-        /// <summary>
-        /// If set to true, quality crushing is not performed.
-        /// You may end up with files larger then your input depending on your quality set.
-        /// </summary>
-        public bool DisableQualityCrushing { get; set; } = false;
-        /// <summary>
-        /// If set to true, the 'copy' quality will actually copy the media streams under some circumstances instead of running them through the encoder.
-        /// Copying is only performed if the input video streams match the desired quality pixel format, and if the desired level and profile are superior to the input video streams.
-        /// </summary>
-        public bool EnableStreamCopying { get; set; } = false;
-
-        /// <summary>
-        /// The stage progress of the process
-        /// </summary>
-        public Dictionary<EncodingStage, double> Progress { get; private set; }
+        private readonly Action<string> stderrLog;
 
         private readonly Action<string> stdoutLog;
-        private readonly Action<string> stderrLog;
 
         /// <summary>
         /// Creates a new encoder with the given paths for ffmpeg and MP4Box, as well as the working directory.
@@ -86,18 +52,53 @@ namespace DEnc
         }
 
         /// <summary>
+        /// The path to MP4Box.
+        /// </summary>
+        public string BoxPath { get; private set; }
+
+        /// <summary>
+        /// If set to true, quality crushing is not performed.
+        /// You may end up with files larger then your input depending on your quality set.
+        /// </summary>
+        public bool DisableQualityCrushing { get; set; } = false;
+
+        /// <summary>
+        /// If set to true, the 'copy' quality will actually copy the media streams under some circumstances instead of running them through the encoder.
+        /// Copying is only performed if the input video streams match the desired quality pixel format, and if the desired level and profile are superior to the input video streams.
+        /// </summary>
+        public bool EnableStreamCopying { get; set; } = false;
+
+        /// <summary>
+        /// The path to ffmpeg.
+        /// </summary>
+        public string FFmpegPath { get; private set; }
+
+        /// <summary>
+        /// The path to ffprobe.
+        /// </summary>
+        public string FFprobePath { get; private set; }
+        /// <summary>
+        /// The stage progress of the process
+        /// </summary>
+        public Dictionary<EncodingStage, double> Progress { get; private set; }
+
+        /// <summary>
+        /// The temp path to store encodes in progress.
+        /// </summary>
+        public string WorkingDirectory { get; private set; }
+        /// <summary>
         /// Obsolete
         /// </summary>
         /// <returns></returns>
         [Obsolete("This method has been replaced by a new API", true)]
         public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
-            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default(CancellationToken))
+            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default)
         {
             throw new NotSupportedException();
         }
 
         /// <summary>
-        /// oOnverts the input file into an MPEG DASH representations. 
+        /// oOnverts the input file into an MPEG DASH representations.
         /// This includes multiple bitrates, subtitle tracks, audio tracks, and an MPD manifest.
         /// </summary>
         /// <param name="config"></param>
@@ -127,7 +128,6 @@ namespace DEnc
                 config.Qualities = QualityCrusher.CrushQualities(config.Qualities, inputBitrate);
             }
             compareQuality = config.Qualities.First();
-
 
             if (EnableStreamCopying && compareQuality.Bitrate == 0)
             {
@@ -161,7 +161,6 @@ namespace DEnc
                         {
                             ReportProgress(progress, EncodingStage.Encode, progressFloat);
                         }
-                            
                     }
                     else
                     {
@@ -217,9 +216,112 @@ namespace DEnc
             }
         }
 
+        private static string GetSubtitleName(string vttFilename)
+        {
+            if (vttFilename.Contains("."))
+            {
+                var dotComponents = vttFilename.Split('.');
+                if (dotComponents.Length > 2)
+                {
+                    var possibleLang = dotComponents.Skip(1).Take(dotComponents.Length - 2);
+                    foreach (var component in possibleLang)
+                    {
+                        if (Constants.Languages.TryGetValue(component, out string languageName))
+                        {
+                            return languageName;
+                        }
+                    }
+                }
+            }
+            return "und";
+        }
+
+        /// <summary>
+        /// Performs on-disk post processing of the generated MPD file.
+        /// Subtitles are added, useless tags removed, etc.
+        /// </summary>
+        private static MPD PostProcessMpdFile(string filepath, List<StreamSubtitleFile> subtitles)
+        {
+            MPD.TryLoadFromFile(filepath, out MPD mpd, out Exception ex);
+            mpd.ProgramInformation = null;
+
+            // Get the highest used representation ID so we can increment it for new IDs.
+            int.TryParse(mpd.Period.Max(x => x.AdaptationSet.Max(y => y.Representation.Max(z => z.Id))), out int representationId);
+            representationId++;
+
+            foreach (var period in mpd.Period)
+            {
+                // Add subtitles to this period.
+                foreach (var sub in subtitles)
+                {
+                    period.AdaptationSet.Add(new AdaptationSet()
+                    {
+                        MimeType = "text/vtt",
+                        Lang = sub.Language,
+                        ContentType = "text",
+                        Representation = new List<Representation>()
+                        {
+                            new Representation()
+                            {
+                                Id = representationId.ToString(),
+                                Bandwidth = 256,
+                                BaseURL = new List<string>()
+                                {
+                                    Path.GetFileName(sub.Path)
+                                }
+                            }
+                        },
+                        Role = new DescriptorType()
+                        {
+                            SchemeIdUri = "urn:gpac:dash:role:2013",
+                            Value = $"{sub.Language} {representationId}"
+                        }
+                    });
+                    representationId++;
+                }
+            }
+
+            mpd.SaveToFile(filepath);
+            return mpd;
+        }
+
+        private void CleanOutputFiles(IEnumerable<string> files)
+        {
+            if (files == null) { return; }
+            foreach (var file in files)
+            {
+                try
+                {
+                    stderrLog.Invoke("Deleting file " + file);
+                    int attempts = 0;
+                    while (File.Exists(file))
+                    {
+                        attempts++;
+                        try
+                        {
+                            File.Delete(file);
+                        }
+                        catch (IOException)
+                        {
+                            if (attempts < 5)
+                            {
+                                Thread.Sleep(200);
+                                continue;
+                            }
+                            throw;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    stderrLog.Invoke(ex.ToString());
+                }
+            }
+        }
+
         private FfmpegRenderedCommand EncodeVideo(DashConfig config, MediaMetadata inputStats, int inputBitrate, bool enableStreamCopying, Action<string> progressCallback, CancellationToken cancel)
         {
-            FfmpegRenderedCommand ffmpegCommand = FFmpegCommandBuilder 
+            FfmpegRenderedCommand ffmpegCommand = FFmpegCommandBuilder
                 .Initilize(
                     inPath: config.InputFilePath,
                     outDirectory: config.OutputDirectory,
@@ -283,7 +385,7 @@ namespace DEnc
             try
             {
                 mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog, cancel);
-                
+
                 // Dash Failed TODO: Add in Progress report behavior that was excluded from this
                 // Detect error in MP4Box process and cleanup, then return null.
                 if (mpdResult.ExitCode != 0)
@@ -318,131 +420,7 @@ namespace DEnc
             return mp4boxCommand;
         }
 
-        /// <summary>
-        /// Processes the media subtitles and finds and handles external subtitle files
-        /// </summary>
-        /// <param name="config">The <see cref="DashConfig"/></param>
-        /// <param name="subtitleFiles">The subtitle stream files</param>
-        /// <param name="startFileIndex">The index additional subtitles need to start at. This should be the max index of the ffmpeg pieces +1</param>
-        private List<StreamSubtitleFile> ProcessSubtitles(DashConfig config, IEnumerable<StreamSubtitleFile> subtitleFiles, int startFileIndex)
-        {
-            // Move subtitles found in media
-            List<StreamSubtitleFile> subtitles = new List<StreamSubtitleFile>();
-            foreach (var subFile in subtitleFiles)
-            {
-                string oldPath = subFile.Path;
-                subFile.Path = Path.Combine(config.OutputDirectory, Path.GetFileName(subFile.Path));
-                subtitles.Add(subFile);
-                if (oldPath != subFile.Path)
-                {
-                    if (File.Exists(subFile.Path)) 
-                    { 
-                        File.Delete(subFile.Path); 
-                    }
-                    File.Move(oldPath, subFile.Path);
-                }
-            }
-
-            // Add external subtitles
-            string baseFilename = Path.GetFileNameWithoutExtension(config.InputFilePath);
-            foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(config.InputFilePath), baseFilename + "*", SearchOption.TopDirectoryOnly))
-            {
-                if (vttFile.EndsWith(".vtt"))
-                {
-                    string vttFilename = Path.GetFileName(vttFile);
-                    string vttName = GetSubtitleName(vttFilename);
-                    string vttOutputPath = Path.Combine(config.OutputDirectory, $"{config.OutputFileName}_subtitle_{vttName}_{startFileIndex}.vtt");
-
-                    var subFile = new StreamSubtitleFile()
-                    {
-                        Type = StreamType.Subtitle,
-                        Index = startFileIndex,
-                        Path = vttOutputPath,
-                        Language = $"{vttName}_{startFileIndex}"
-                    };
-                    startFileIndex++;
-                    File.Copy(vttFile, vttOutputPath, true);
-                    subtitles.Add(subFile);
-                }
-            }
-
-            return subtitles;
-        }
-        private void ReportProgress(IProgress<Dictionary<EncodingStage, double>> reporter, EncodingStage stage, double value)
-        {
-            Progress[stage] = value;
-            reporter?.Report(Progress);
-        }
-
-        private static string GetSubtitleName(string vttFilename)
-        {
-            if (vttFilename.Contains("."))
-            {
-                var dotComponents = vttFilename.Split('.');
-                if (dotComponents.Length > 2)
-                {
-                    var possibleLang = dotComponents.Skip(1).Take(dotComponents.Length - 2);
-                    foreach (var component in possibleLang)
-                    {
-                        if (Constants.Languages.TryGetValue(component, out string languageName))
-                        {
-                            return languageName;
-                        }
-                    }
-                }
-            }
-            return "und";
-        }
-
-        /// <summary>
-        /// Performs on-disk post processing of the generated MPD file.
-        /// Subtitles are added, useless tags removed, etc.
-        /// </summary>
-        private static MPD PostProcessMpdFile(string filepath, List<StreamSubtitleFile> subtitles)
-        {
-            MPD.LoadFromFile(filepath, out MPD mpd, out Exception ex);
-            mpd.ProgramInformation = null;
-
-            // Get the highest used representation ID so we can increment it for new IDs.
-            int.TryParse(mpd.Period.Max(x => x.AdaptationSet.Max(y => y.Representation.Max(z => z.Id))), out int representationId);
-            representationId++;
-
-            foreach (var period in mpd.Period)
-            {
-                // Add subtitles to this period.
-                foreach (var sub in subtitles)
-                {
-                    period.AdaptationSet.Add(new AdaptationSet()
-                    {
-                        MimeType = "text/vtt",
-                        Lang = sub.Language,
-                        ContentType = "text",
-                        Representation = new List<Representation>()
-                        {
-                            new Representation()
-                            {
-                                Id = representationId.ToString(),
-                                Bandwidth = 256,
-                                BaseURL = new List<string>()
-                                {
-                                    Path.GetFileName(sub.Path)
-                                }
-                            }
-                        },
-                        Role = new DescriptorType()
-                        {
-                            SchemeIdUri = "urn:gpac:dash:role:2013",
-                            Value = $"{sub.Language} {representationId.ToString()}"
-                        }
-                    });
-                    representationId++;
-                }
-            }
-
-            mpd.SaveToFile(filepath);
-            return mpd;
-        }
-
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Default is used in case of unexpected input")]
         private MediaMetadata ProbeFile(string inFile)
         {
             string args = $"-print_format xml=fully_qualified=1 -show_format -show_streams -- \"{inFile}\"";
@@ -462,12 +440,15 @@ namespace DEnc
                         case "audio":
                             audioStreams.Add(s);
                             break;
+
                         case "video":
                             videoStreams.Add(s);
                             break;
+
                         case "subtitle":
                             subtitleStreams.Add(s);
                             break;
+
                         default:
                             break;
                     }
@@ -505,7 +486,7 @@ namespace DEnc
                                 .Select(component => decimal.Parse(component))
                                 .Aggregate((dividend, divisor) => dividend / divisor);
                         }
-                        catch(Exception)
+                        catch (Exception)
                         {
                             // Leave it as zero.
                         }
@@ -523,38 +504,61 @@ namespace DEnc
             return null;
         }
 
-        private void CleanOutputFiles(IEnumerable<string> files)
+        /// <summary>
+        /// Processes the media subtitles and finds and handles external subtitle files
+        /// </summary>
+        /// <param name="config">The <see cref="DashConfig"/></param>
+        /// <param name="subtitleFiles">The subtitle stream files</param>
+        /// <param name="startFileIndex">The index additional subtitles need to start at. This should be the max index of the ffmpeg pieces +1</param>
+        private List<StreamSubtitleFile> ProcessSubtitles(DashConfig config, IEnumerable<StreamSubtitleFile> subtitleFiles, int startFileIndex)
         {
-            if (files == null) { return; }
-            foreach (var file in files)
+            // Move subtitles found in media
+            List<StreamSubtitleFile> subtitles = new List<StreamSubtitleFile>();
+            foreach (var subFile in subtitleFiles)
             {
-                try
+                string oldPath = subFile.Path;
+                subFile.Path = Path.Combine(config.OutputDirectory, Path.GetFileName(subFile.Path));
+                subtitles.Add(subFile);
+                if (oldPath != subFile.Path)
                 {
-                    stderrLog.Invoke("Deleting file " + file);
-                    int attempts = 0;
-                    while (File.Exists(file))
+                    if (File.Exists(subFile.Path))
                     {
-                        attempts++;
-                        try
-                        {
-                            File.Delete(file);
-                        }
-                        catch (IOException)
-                        {
-                            if (attempts < 5)
-                            {
-                                Thread.Sleep(200);
-                                continue;
-                            }
-                            throw;
-                        }
+                        File.Delete(subFile.Path);
                     }
-                }
-                catch (Exception ex)
-                {
-                    stderrLog.Invoke(ex.ToString());
+                    File.Move(oldPath, subFile.Path);
                 }
             }
+
+            // Add external subtitles
+            string baseFilename = Path.GetFileNameWithoutExtension(config.InputFilePath);
+            foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(config.InputFilePath), baseFilename + "*", SearchOption.TopDirectoryOnly))
+            {
+                if (vttFile.EndsWith(".vtt"))
+                {
+                    string vttFilename = Path.GetFileName(vttFile);
+                    string vttName = GetSubtitleName(vttFilename);
+                    string vttOutputPath = Path.Combine(config.OutputDirectory, $"{config.OutputFileName}_subtitle_{vttName}_{startFileIndex}.vtt");
+
+                    var subFile = new StreamSubtitleFile()
+                    {
+                        Type = StreamType.Subtitle,
+                        Index = startFileIndex,
+                        Path = vttOutputPath,
+                        Language = $"{vttName}_{startFileIndex}"
+                    };
+                    startFileIndex++;
+                    File.Copy(vttFile, vttOutputPath, true);
+                    subtitles.Add(subFile);
+                }
+            }
+
+            return subtitles;
+        }
+
+        private void ReportProgress(IProgress<Dictionary<EncodingStage, double>> reporter, EncodingStage stage, double value)
+        {
+            Progress[stage] = value;
+            reporter?.Report(Progress);
         }
     }
 }

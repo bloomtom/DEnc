@@ -1,23 +1,10 @@
 ﻿using DEnc.Serialization;
-using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace DEnc
 {
     internal class MediaMetadata
     {
-        public IEnumerable<MediaStream> AudioStreams { get; private set; }
-        public IEnumerable<MediaStream> VideoStreams { get; private set; }
-        public IEnumerable<MediaStream> SubtitleStreams { get; private set; }
-        public IReadOnlyDictionary<string, string> Metadata { get; private set; }
-        /// <summary>
-        /// Bitrate in bits per second.
-        /// </summary>
-        public long Bitrate { get; private set; }
-        public decimal Framerate { get; private set; }
-        public float Duration { get; private set; }
-
         internal MediaMetadata(
             IEnumerable<MediaStream> videoStreams,
             IEnumerable<MediaStream> audioStreams,
@@ -35,5 +22,17 @@ namespace DEnc
             Framerate = framerate;
             Duration = duration;
         }
+
+        public IEnumerable<MediaStream> AudioStreams { get; private set; }
+        /// <summary>
+        /// Bitrate in bits per second.
+        /// </summary>
+        public long Bitrate { get; private set; }
+
+        public float Duration { get; private set; }
+        public decimal Framerate { get; private set; }
+        public IReadOnlyDictionary<string, string> Metadata { get; private set; }
+        public IEnumerable<MediaStream> SubtitleStreams { get; private set; }
+        public IEnumerable<MediaStream> VideoStreams { get; private set; }
     }
 }

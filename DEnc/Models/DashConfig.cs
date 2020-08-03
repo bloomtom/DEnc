@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace DEnc.Models
 {
@@ -12,13 +11,7 @@ namespace DEnc.Models
     /// </summary>
     public class DashConfig
     {
-        /// <summary>
-        /// Creates the encoder config
-        /// </summary>
-        /// <param name="inputFilePath"></param>
-        /// <param name="outputDirectory"></param>
-        /// <param name="qualities"></param>
-        /// <param name="outputFileName"></param>
+        ///<inheritdoc cref="DashConfig"/>
         public DashConfig(string inputFilePath, string outputDirectory, IEnumerable<IQuality> qualities, string outputFileName = null)
         {
             if (inputFilePath == null || !File.Exists(inputFilePath))
@@ -67,29 +60,14 @@ namespace DEnc.Models
         }
 
         /// <summary>
-        /// The Full or Relative path to the Input File
-        /// </summary>
-        public string InputFilePath { get; }
-
-        /// <summary>
-        /// The Full or Relative path of the output directory
-        /// </summary>
-        public string OutputDirectory { get; }
-
-        /// <summary>
-        /// A collection of <see cref="IQuality"/> items for this video
-        /// </summary>
-        public IEnumerable<IQuality> Qualities { get; internal set; }
-
-        /// <summary>
-        /// The base output filename, without extension. This name is used as the base for the output names.
-        /// </summary>
-        public string OutputFileName { get; }
-
-        /// <summary>
         /// Framerate of the video, defaults to match the input framerate
         /// </summary>
         public int Framerate { get; set; } = 0;
+
+        /// <summary>
+        /// The Full or Relative path to the Input File
+        /// </summary>
+        public string InputFilePath { get; }
 
         /// <summary>
         /// KeyframeInterval of the video, defaults to match the input keyframe interval
@@ -100,5 +78,20 @@ namespace DEnc.Models
         /// The encoding options of the video. Defaults as <see cref="H264EncodeOptions"/>
         /// </summary>
         public IEncodeOptions Options { get; set; } = new H264EncodeOptions();
+
+        /// <summary>
+        /// The Full or Relative path of the output directory
+        /// </summary>
+        public string OutputDirectory { get; }
+
+        /// <summary>
+        /// The base output filename, without extension. This name is used as the base for the output names.
+        /// </summary>
+        public string OutputFileName { get; }
+
+        /// <summary>
+        /// A collection of <see cref="IQuality"/> items for this video
+        /// </summary>
+        public IEnumerable<IQuality> Qualities { get; internal set; }
     }
 }

@@ -1,15 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DEnc.Models
+﻿namespace DEnc.Models
 {
     internal class Codec
     {
-        public string Name { get; private set; }
-        public string Container { get; private set; }
-        public string Extension { get; private set; }
-
         public Codec(string name, string container, string extension)
         {
             Name = name;
@@ -17,6 +9,9 @@ namespace DEnc.Models
             Extension = extension;
         }
 
+        public string Container { get; private set; }
+        public string Extension { get; private set; }
+        public string Name { get; private set; }
         public override string ToString()
         {
             return Name;

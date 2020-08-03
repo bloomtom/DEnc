@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace DEnc
 {
@@ -11,25 +10,6 @@ namespace DEnc
     /// </summary>
     public static class Copyable264Infer
     {
-        /// <summary>
-        /// Compares a set of streams to a reference quality, and determines if the set are all equal to or less advanced than the reference.
-        /// </summary>
-        /// <param name="pixelFormat">A pixel format like: yuv420p</param>
-        /// <param name="level">A level like: 4.0</param>
-        /// <param name="profile">A profile like: High</param>
-        /// <param name="streams">A set of media streams to check for compatibility.</param>
-        /// <returns>True if the input streams are copyable.</returns>
-        public static bool DetermineCopyCanBeDone(string pixelFormat, string level, string profile, IEnumerable<MediaStream> streams)
-        {
-            bool enableStreamCopy =
-                streams.All(x =>
-                x.codec_name.Equals("h264", StringComparison.OrdinalIgnoreCase) &&
-                x.pix_fmt.Equals(pixelFormat, StringComparison.OrdinalIgnoreCase) &&
-                CompareLevels(level, x.level) &&
-                CompareProfiles(profile, x.profile));
-            return enableStreamCopy;
-        }
-
         /// <summary>
         /// Compares a level in decimal form (4.2) to a level in integer form (42).
         /// </summary>
@@ -51,6 +31,24 @@ namespace DEnc
             return max != -1 && com != -1 && com <= max;
         }
 
+        /// <summary>
+        /// Compares a set of streams to a reference quality, and determines if the set are all equal to or less advanced than the reference.
+        /// </summary>
+        /// <param name="pixelFormat">A pixel format like: yuv420p</param>
+        /// <param name="level">A level like: 4.0</param>
+        /// <param name="profile">A profile like: High</param>
+        /// <param name="streams">A set of media streams to check for compatibility.</param>
+        /// <returns>True if the input streams are copyable.</returns>
+        public static bool DetermineCopyCanBeDone(string pixelFormat, string level, string profile, IEnumerable<MediaStream> streams)
+        {
+            bool enableStreamCopy =
+                streams.All(x =>
+                x.codec_name.Equals("h264", StringComparison.OrdinalIgnoreCase) &&
+                x.pix_fmt.Equals(pixelFormat, StringComparison.OrdinalIgnoreCase) &&
+                CompareLevels(level, x.level) &&
+                CompareProfiles(profile, x.profile));
+            return enableStreamCopy;
+        }
         private static double NormalizeProfile(string profile)
         {
             switch (profile.ToLowerInvariant())

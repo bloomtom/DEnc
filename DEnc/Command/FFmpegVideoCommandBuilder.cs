@@ -1,39 +1,36 @@
 ﻿using DEnc.Models;
 using DEnc.Models.Interfaces;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace DEnc.Commands
 {
     internal class FFmpegVideoCommandBuilder
     {
-        int index;
-        int bitrate;
-        string path;
-        List<string> commands;
-
-        public static FFmpegVideoCommandBuilder Initilize(int index, int bitrate, string path, ICollection<string> additionalFlags)
-        {
-            FFmpegVideoCommandBuilder builder = new FFmpegVideoCommandBuilder(index, bitrate, path, additionalFlags);
-            return builder;
-        }
-
+        private readonly int bitrate;
+        private readonly List<string> commands;
+        private readonly int index;
+        private readonly string path;
         private FFmpegVideoCommandBuilder(int index, int bitrate, string path, ICollection<string> additionalFlags)
         {
             this.index = index;
             this.bitrate = bitrate;
             this.path = path;
-            commands = new List<string>();
-
-            commands.Add($"-map 0:{index}");
+            commands = new List<string>
+            {
+                $"-map 0:{index}"
+            };
             if (additionalFlags != null && additionalFlags.Any())
             {
                 commands.AddRange(additionalFlags);
             }
         }
 
+        public static FFmpegVideoCommandBuilder Initilize(int index, int bitrate, string path, ICollection<string> additionalFlags)
+        {
+            FFmpegVideoCommandBuilder builder = new FFmpegVideoCommandBuilder(index, bitrate, path, additionalFlags);
+            return builder;
+        }
         public StreamVideoFile Build()
         {
             commands.Add($"\"{ path}\"");
@@ -46,16 +43,6 @@ namespace DEnc.Commands
                 Path = path,
                 Argument = string.Join(" ", commands)
             };
-        }
-
-        public FFmpegVideoCommandBuilder WithSize(IQuality quality)
-        {
-            if (quality.Width == 0 || quality.Height == 0)
-            {
-                return this;
-            }
-            commands.Add($"-s {quality.Width}x{quality.Height}");
-            return this;
         }
 
         public FFmpegVideoCommandBuilder WithBitrate(int bitrate)
@@ -79,9 +66,25 @@ namespace DEnc.Commands
             return this;
         }
 
+        public FFmpegVideoCommandBuilder WithFramerate(int framerate)
+        {
+            if (framerate == 0)
+            {
+                return this;
+            }
+            commands.Add($"-r {framerate}");
+            return this;
+        }
+
+        public FFmpegVideoCommandBuilder WithPixelFormat(string format)
+        {
+            TryAddSimpleCommand($"-pix_fmt {format}", format);
+            return this;
+        }
+
         public FFmpegVideoCommandBuilder WithPreset(H264Preset preset)
         {
-            if(preset == H264Preset.none)
+            if (preset == H264Preset.none)
             {
                 return this;
             }
@@ -106,22 +109,15 @@ namespace DEnc.Commands
             return this;
         }
 
-        public FFmpegVideoCommandBuilder WithPixelFormat(string format)
+        public FFmpegVideoCommandBuilder WithSize(IQuality quality)
         {
-            TryAddSimpleCommand($"-pix_fmt {format}", format);
-            return this;
-        }
-
-        public FFmpegVideoCommandBuilder WithFramerate(int framerate)
-        {
-            if (framerate == 0)
+            if (quality.Width == 0 || quality.Height == 0)
             {
                 return this;
             }
-            commands.Add($"-r {framerate}");
+            commands.Add($"-s {quality.Width}x{quality.Height}");
             return this;
         }
-
         public FFmpegVideoCommandBuilder WithVideoCodec(string sourceCodec, int keyframeInterval, bool enableCopy)
         {
             string defaultCoding = $"-x264-params keyint={keyframeInterval}:scenecut=0";
@@ -132,6 +128,7 @@ namespace DEnc.Commands
                 case "h264":
                     commands.Add($"-vcodec {(enableCopy ? "copy" : "libx264")} {defaultCoding}");
                     break;
+
                 default:
                     commands.Add($"-vcodec libx264 {defaultCoding}");
                     break;
@@ -156,5 +153,4 @@ namespace DEnc.Commands
             commands.Add(command);
         }
     }
-
 }

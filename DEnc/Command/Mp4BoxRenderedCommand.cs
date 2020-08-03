@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DEnc.Commands
+﻿namespace DEnc.Commands
 {
     /// <summary>
     /// Container used to house the rendered Mp4Box command and it's output path
@@ -15,7 +11,7 @@ namespace DEnc.Commands
             MpdPath = mpdPath;
         }
 
-        public string RenderedCommand { get; private set; }
         public string MpdPath { get; private set; }
+        public string RenderedCommand { get; private set; }
     }
 }

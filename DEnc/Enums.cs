@@ -1,40 +1,32 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DEnc
+﻿namespace DEnc
 {
-    internal enum StreamType
-    {
-        Video,
-        Audio,
-        Subtitle,
-        MPD
-    }
-
     /// <summary>
     /// Some example qualities.
     /// </summary>
     public enum DefaultQuality
     {
         /// <summary>
-        /// Very low quality. Low grade SD to low grade HD
+        /// Very low quality. Low grade SD to low grade HD.
         /// </summary>
         potato,
+
         /// <summary>
         /// Low quality HD.
         /// </summary>
         low,
+
         /// <summary>
         /// Decent quality HD.
         /// </summary>
         medium,
+
         /// <summary>
         /// Good quality HD.
         /// </summary>
         high,
+
         /// <summary>
-        /// Excellent quality HD
+        /// Excellent quality HD.
         /// </summary>
         ultra
     }
@@ -45,30 +37,34 @@ namespace DEnc
     public enum EncodingStage
     {
         /// <summary>
-        /// Encoding the video
+        /// Encoding the video.
         /// </summary>
         Encode = 1,
 
         /// <summary>
-        /// Generating DASH Manifest
+        /// Generating DASH Manifest.
         /// </summary>
         DASHify = 2,
 
         /// <summary>
-        /// Processing subtitles
+        /// Processing subtitles.
         /// </summary>
         PostProcess = 3
     }
 
     /// <summary>
-    /// H264 Presets. 
+    /// H264 Presets.
     /// The slower the preset the smaller the file size and the better the quality, but the longer the encoding time.
     /// Has diminishing returns near the end of each spectrum
     /// Recommended range is medium -> faster
     /// </summary>
     public enum H264Preset
     {
+        /// <summary>
+        /// Reserved for copy quality.
+        /// </summary>
         none = 0,
+
         /// <summary>
         /// ~55% faster than medium. Extremely low quality.
         /// </summary>
@@ -120,20 +116,32 @@ namespace DEnc
     /// </summary>
     public enum H264Profile
     {
-        none = 0,
         /// <summary>
-        /// Ideal for older mobile devices
+        /// Reserved for copy profile.
+        /// </summary>
+        none = 0,
+
+        /// <summary>
+        /// Ideal for older mobile devices.
         /// </summary>
         baseline,
 
         /// <summary>
-        /// Ideal for web streaming and the majority of devices
+        /// Ideal for web streaming and the majority of devices.
         /// </summary>
         main,
 
         /// <summary>
-        /// Ideal for high-end mobile device, or direct playback on a computer
+        /// Ideal for high-end mobile device, or direct playback on a computer.
         /// </summary>
         high
+    }
+
+    internal enum StreamType
+    {
+        Video,
+        Audio,
+        Subtitle,
+        MPD
     }
 }

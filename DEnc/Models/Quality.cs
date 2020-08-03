@@ -1,7 +1,5 @@
 ﻿using DEnc.Models.Interfaces;
-using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace DEnc.Models
 {
@@ -10,45 +8,13 @@ namespace DEnc.Models
     /// </summary>
     public class Quality : IQuality
     {
-        /// <summary>
-        /// Width of frame in pixels.
-        /// </summary>
-        public int Width { get; set; } = 0;
-        /// <summary>
-        /// Height of frame in pixels.
-        /// </summary>
-        public int Height { get; set; } = 0;
-        /// <summary>
-        /// Bitrate of media in kb/s.
-        /// </summary>
-        public int Bitrate { get; set; } = 0;
-        /// <summary>
-        /// ffmpeg preset (veryfast, fast, medium, slow, veryslow).
-        /// </summary>
-        public H264Preset Preset { get; set; } = H264Preset.medium;
-        /// <summary>
-        /// ffmpeg h264 encoding profile (Baseline, Main, High,)
-        /// </summary>
-        public H264Profile Profile { get; set; } = H264Profile.high;
-        /// <summary>
-        /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
-        /// </summary>
-        public string Level { get; set; } = "4.0";
-        /// <summary>
-        /// ffmpeg pixel format or pix_fmt.
-        /// </summary>
-        public string PixelFormat { get; set; } = "yuv420p";
-
-        /// <summary>
-        /// 
-        /// </summary>
+        ///<inheritdoc cref="Quality"/>
         public Quality()
         {
-
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="width">Width of frame in pixels</param>
         /// <param name="height">Height of frame in pixels</param>
@@ -63,7 +29,7 @@ namespace DEnc.Models
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="width">Width of frame in pixels</param>
         /// <param name="height">Height of frame in pixels</param>
@@ -71,26 +37,48 @@ namespace DEnc.Models
         /// <param name="preset">h264 preset</param>
         /// <param name="profile">h264 profile</param>
         public Quality(int width, int height, int bitrate, H264Preset preset, H264Profile profile)
-            :this(width, height, bitrate, preset)
+            : this(width, height, bitrate, preset)
         {
             Profile = profile;
         }
 
         /// <summary>
-        /// 
+        /// Bitrate of media in kb/s.
         /// </summary>
-        /// <returns></returns>
-        public override string ToString()
-        {
-            return $"{Width}x{Height} @ {Bitrate} kb/s - {Preset}";
-        }
+        public int Bitrate { get; set; } = 0;
 
+        /// <summary>
+        /// Height of frame in pixels.
+        /// </summary>
+        public int Height { get; set; } = 0;
+
+        /// <summary>
+        /// ffmpeg h264 encoding profile level (3.0, 4.0, 4.1...)
+        /// </summary>
+        public string Level { get; set; } = "4.0";
+
+        /// <summary>
+        /// ffmpeg pixel format or pix_fmt.
+        /// </summary>
+        public string PixelFormat { get; set; } = "yuv420p";
+
+        /// <summary>
+        /// ffmpeg preset (veryfast, fast, medium, slow, veryslow).
+        /// </summary>
+        public H264Preset Preset { get; set; } = H264Preset.medium;
+
+        /// <summary>
+        /// ffmpeg h264 encoding profile (Baseline, Main, High,)
+        /// </summary>
+        public H264Profile Profile { get; set; } = H264Profile.high;
+
+        /// <summary>
+        /// Width of frame in pixels.
+        /// </summary>
+        public int Width { get; set; } = 0;
         /// <summary>
         /// Generates a set of qualities from a given DefaultQuality level.
         /// </summary>
-        /// <param name="q"></param>
-        /// <param name="preset"></param>
-        /// <returns></returns>
         public static IEnumerable<IQuality> GenerateDefaultQualities(DefaultQuality q, H264Preset preset)
         {
             switch (q)
@@ -102,6 +90,7 @@ namespace DEnc.Models
                         new Quality(854, 480, 800, preset),
                         new Quality(640, 360, 500, preset)
                     };
+
                 case DefaultQuality.low:
                     return new List<Quality>()
                     {
@@ -109,6 +98,7 @@ namespace DEnc.Models
                         new Quality(1280, 720, 1600, preset),
                         new Quality(640, 360, 700, preset),
                     };
+
                 case DefaultQuality.high:
                     return new List<Quality>()
                     {
@@ -116,6 +106,7 @@ namespace DEnc.Models
                         new Quality(1920, 1080, 4000, preset),
                         new Quality(1280, 720, 2000, preset),
                     };
+
                 case DefaultQuality.ultra:
                     return new List<Quality>()
                     {
@@ -123,6 +114,7 @@ namespace DEnc.Models
                         new Quality(1920, 1080, 6000, preset),
                         new Quality(1280, 720, 2000, preset),
                     };
+
                 default:
                     break;
             }
@@ -146,22 +138,27 @@ namespace DEnc.Models
         }
 
         /// <summary>
-        /// 
+        /// Uses Bitrate for comparison.
         /// </summary>
-        /// <param name="obj"></param>
-        /// <returns></returns>
         public override bool Equals(object obj)
         {
             return base.Equals(Bitrate);
         }
 
         /// <summary>
-        /// 
+        /// Yields the hash code for the Bitrate.
         /// </summary>
-        /// <returns></returns>
         public override int GetHashCode()
         {
             return Bitrate.GetHashCode();
+        }
+
+        /// <summary>
+        /// Yields a user friendly string representation of the width, height, bitrate and preset.
+        /// </summary>
+        public override string ToString()
+        {
+            return $"{Width}x{Height} @ {Bitrate} kb/s - {Preset}";
         }
     }
 }

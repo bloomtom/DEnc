@@ -3,49 +3,20 @@ using DEnc.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Xunit;
 
 namespace DEncTests
 {
     public class ConfigTests
     {
-        const string testFileName = "testfile.ogg";
+        private const string testFileName = "testfile.ogg";
 
-        List<Quality> Qualities => new List<Quality>()
+        private List<Quality> Qualities => new List<Quality>()
         {
             new Quality(1920, 1080, 4000, H264Preset.fast),
             new Quality(1280, 720, 1280, H264Preset.fast),
             new Quality(640, 480, 768, H264Preset.fast)
         };
-
-        [Fact]
-        public void Constructor_WithInvalidInputPath_ThrowsFileNotFoundException()
-        {
-            string testFile = "nonexistantFile.doesntexist";
-            var exception = Assert.Throws<FileNotFoundException>(() => new DashConfig(testFile, Environment.CurrentDirectory, Qualities));
-            Assert.Equal("Input path does not exist.", exception.Message);
-        }
-
-        [Fact]
-        public void Constructor_WithInvalidOutputPath_ThrowsDirectoryNotFoundException()
-        {
-            string testDir = @"D:\nodir\this\does\not\exist";
-            var exception = Assert.Throws<DirectoryNotFoundException>(() => new DashConfig(testFileName, testDir, Qualities));
-            Assert.Equal("Output directory does not exist.", exception.Message);
-        }
-
-        [Fact]
-        public void Constructor_WithNullQualities_ThrowsArgumentNullException()
-        {
-            var exception = Assert.Throws<ArgumentNullException>("qualities", () => new DashConfig(testFileName, Environment.CurrentDirectory, null));
-        }
-
-        [Fact]
-        public void Constructor_WithEmptyQualities_ThrowsArgumentOutOfRangeException()
-        {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>("qualities", () => new DashConfig(testFileName, Environment.CurrentDirectory, new List<Quality>()));
-        }
 
         [Fact]
         public void Constructor_WithDuplicateQualities_ThrowsArgumentException()
@@ -61,11 +32,17 @@ namespace DEncTests
         }
 
         [Fact]
-        public void Constructor_WithNullOutputFileName_UsesInputName()
+        public void Constructor_WithEmptyQualities_ThrowsArgumentOutOfRangeException()
         {
-            DashConfig config = new DashConfig(testFileName, Environment.CurrentDirectory, Qualities);
+            var exception = Assert.Throws<ArgumentOutOfRangeException>("qualities", () => new DashConfig(testFileName, Environment.CurrentDirectory, new List<Quality>()));
+        }
 
-            Assert.Equal("testfile", config.OutputFileName);
+        [Fact]
+        public void Constructor_WithInvalidInputPath_ThrowsFileNotFoundException()
+        {
+            string testFile = "nonexistantFile.doesntexist";
+            var exception = Assert.Throws<FileNotFoundException>(() => new DashConfig(testFile, Environment.CurrentDirectory, Qualities));
+            Assert.Equal("Input path does not exist.", exception.Message);
         }
 
         [Fact]
@@ -77,5 +54,26 @@ namespace DEncTests
             Assert.Equal("testfile", config.OutputFileName);
         }
 
+        [Fact]
+        public void Constructor_WithInvalidOutputPath_ThrowsDirectoryNotFoundException()
+        {
+            string testDir = @"D:\nodir\this\does\not\exist";
+            var exception = Assert.Throws<DirectoryNotFoundException>(() => new DashConfig(testFileName, testDir, Qualities));
+            Assert.Equal("Output directory does not exist.", exception.Message);
+        }
+
+        [Fact]
+        public void Constructor_WithNullOutputFileName_UsesInputName()
+        {
+            DashConfig config = new DashConfig(testFileName, Environment.CurrentDirectory, Qualities);
+
+            Assert.Equal("testfile", config.OutputFileName);
+        }
+
+        [Fact]
+        public void Constructor_WithNullQualities_ThrowsArgumentNullException()
+        {
+            var exception = Assert.Throws<ArgumentNullException>("qualities", () => new DashConfig(testFileName, Environment.CurrentDirectory, null));
+        }
     }
 }
