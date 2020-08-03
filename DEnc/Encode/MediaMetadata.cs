@@ -11,6 +11,9 @@ namespace DEnc
         public IEnumerable<MediaStream> VideoStreams { get; private set; }
         public IEnumerable<MediaStream> SubtitleStreams { get; private set; }
         public IReadOnlyDictionary<string, string> Metadata { get; private set; }
+        /// <summary>
+        /// Bitrate in bits per second.
+        /// </summary>
         public long Bitrate { get; private set; }
         public decimal Framerate { get; private set; }
         public float Duration { get; private set; }

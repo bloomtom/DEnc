@@ -10,13 +10,27 @@ namespace DEnc
 
     internal static class Constants
     {
-        internal static IReadOnlyDictionary<string, Codec> SupportedCodecs { get; } = new Dictionary<string, Codec>()
+        internal static IReadOnlyDictionary<string, Codec> SupportedOutputCodecs { get; } = new Dictionary<string, Codec>()
         {
+            ["theora"] = new Codec("theora", "ogg", "ogg"),
             ["opus"] = new Codec("opus", "ogg", "ogg"),
             ["aac"] = new Codec("aac", "mp4", "aac"),
             ["mp3"] = new Codec("mp3", "mp3", "mp3"),
             ["h264"] = new Codec("h264", "mp4", "mp4"),
-            ["vp8"] = new Codec("vp8", "webm", "webm")
+            ["vp8"] = new Codec("vp8", "webm", "webm"),
+            ["vp9"] = new Codec("vp9", "webm", "webm")
+        };
+
+        internal static IReadOnlyDictionary<string, Codec> SupportedInputCodecs { get; } = new Dictionary<string, Codec>()
+        {
+            ["theora"] = new Codec("theora", "ogg", "ogg"),
+            ["opus"] = new Codec("opus", "ogg", "ogg"),
+            ["aac"] = new Codec("aac", "mp4", "aac"),
+            ["mp3"] = new Codec("mp3", "mp3", "mp3"),
+            ["h264"] = new Codec("h264", "mp4", "mp4"),
+            ["h265"] = new Codec("h265", "mp4", "mp4"),
+            ["vp8"] = new Codec("vp8", "webm", "webm"),
+            ["vp9"] = new Codec("vp9", "webm", "webm")
         };
 
         internal static HashSet<string> SupportedSubtitleCodecs { get; } = new HashSet<string>()

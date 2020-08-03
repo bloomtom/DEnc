@@ -104,7 +104,7 @@ namespace DEnc
         /// <param name="progress"></param>
         /// <param name="cancel"></param>
         /// <returns></returns>
-        public DashEncodeResult GenerateDash(DashConfig config, IProgress<Dictionary<EncodingStage, double>> progress = null, CancellationToken cancel = default(CancellationToken))
+        public DashEncodeResult GenerateDash(DashConfig config, IProgress<Dictionary<EncodingStage, double>> progress = null, CancellationToken cancel = default)
         {
             cancel.ThrowIfCancellationRequested();
             if (!Directory.Exists(WorkingDirectory))
@@ -266,12 +266,15 @@ namespace DEnc
 
         private Mp4BoxRenderedCommand GenerateDashManifest(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles, CancellationToken cancel)
         {
+            // Use a default key interval of 3s if a framerate or keyframe interval is not given.
+            int keyInterval = (config.KeyframeInterval == 0 || config.Framerate == 0) ? 3000 : (config.KeyframeInterval / config.Framerate * 1000);
+
             string mpdOutputPath = Path.Combine(config.OutputDirectory, config.OutputFileName) + ".mpd";
             var mp4boxCommand = Mp4BoxCommandBuilder.BuildMp4boxMpdCommand(
                 videoFiles: videoFiles,
                 audioFiles: audioFiles,
                 mpdOutputPath: mpdOutputPath,
-                keyInterval: (config.KeyframeInterval / config.Framerate) * 1000,
+                keyInterval: keyInterval,
                 additionalFlags: config.Options.AdditionalMP4BoxFlags);
 
             // Generate DASH files.
@@ -376,11 +379,15 @@ namespace DEnc
             if (vttFilename.Contains("."))
             {
                 var dotComponents = vttFilename.Split('.');
-                foreach (var component in dotComponents)
+                if (dotComponents.Length > 2)
                 {
-                    if (Constants.Languages.TryGetValue(component, out string languageName))
+                    var possibleLang = dotComponents.Skip(1).Take(dotComponents.Length - 2);
+                    foreach (var component in possibleLang)
                     {
-                        return languageName;
+                        if (Constants.Languages.TryGetValue(component, out string languageName))
+                        {
+                            return languageName;
+                        }
                     }
                 }
             }
@@ -478,14 +485,38 @@ namespace DEnc
                     }
                 }
 
-                var firstVideoStream = videoStreams.FirstOrDefault(x => Constants.SupportedCodecs.ContainsKey(x.codec_name));
-                var firstAudioStream = audioStreams.FirstOrDefault(x => Constants.SupportedCodecs.ContainsKey(x.codec_name));
+                var firstVideoStream = videoStreams.FirstOrDefault(x => Constants.SupportedInputCodecs.ContainsKey(x.codec_name)) ?? videoStreams.First();
 
-                if (!decimal.TryParse(firstVideoStream?.r_frame_rate, out decimal framerate)) { framerate = 0; }
+                decimal framerate = 0;
+                long bitrate = 0;
+                if (firstVideoStream == null)
+                {
+                    // Leave them as zero.
+                }
+                else
+                {
+                    if (decimal.TryParse(firstVideoStream.r_frame_rate, out framerate)) { }
+                    else if (firstVideoStream.r_frame_rate.Contains("/"))
+                    {
+                        try
+                        {
+                            framerate = firstVideoStream.r_frame_rate
+                                .Split('/')
+                                .Select(component => decimal.Parse(component))
+                                .Aggregate((dividend, divisor) => dividend / divisor);
+                        }
+                        catch(Exception)
+                        {
+                            // Leave it as zero.
+                        }
+                    }
+
+                    bitrate = firstVideoStream.bit_rate != 0 ? firstVideoStream.bit_rate : (t.format?.bit_rate ?? 0);
+                }
 
                 float duration = t.format != null ? t.format.duration : 0;
 
-                var meta = new MediaMetadata(videoStreams, audioStreams, subtitleStreams, metadata, firstVideoStream?.bit_rate ?? t.format.bit_rate, framerate, duration);
+                var meta = new MediaMetadata(videoStreams, audioStreams, subtitleStreams, metadata, bitrate, framerate, duration);
                 return meta;
             }
 

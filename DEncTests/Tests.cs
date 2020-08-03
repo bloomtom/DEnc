@@ -64,9 +64,9 @@ namespace DEncTests
         {
             var testQualities = new List<IQuality>
             {
-                new Quality(0, 0, 500, default(H264Preset)),
-                new Quality(0, 0, 1200, default(H264Preset)),
-                new Quality(0, 0, 2000, default(H264Preset))
+                new Quality(0, 0, 500, default),
+                new Quality(0, 0, 1200, default),
+                new Quality(0, 0, 2000, default)
             };
 
             // Test crush down

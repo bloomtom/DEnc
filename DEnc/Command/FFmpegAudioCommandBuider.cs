@@ -35,7 +35,7 @@ namespace DEnc.Commands
             this.outputBaseFilename = outputBaseFilename;
             commands = new List<string>();
 
-            codecSupported = Constants.SupportedCodecs.ContainsKey(audioStream.codec_name);
+            codecSupported = Constants.SupportedOutputCodecs.ContainsKey(audioStream.codec_name);
 
             commands.Add($"-map 0:{audioStream.index}");
             if (additionalFlags != null && additionalFlags.Any())
