@@ -61,13 +61,24 @@ namespace DEncTests
         }
 
         [Fact]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "This is a test")]
         public void GenerateDash_WithCancellationToken_ThrowsOperationCanceledException()
         {
-            var tokenSource = new CancellationTokenSource(500);
-            DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath);
+            var tokenSource = new CancellationTokenSource(250);
+            Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath);
             DashConfig config = new DashConfig(testFileName, RunPath, Qualities, "output");
 
-            Assert.Throws<OperationCanceledException>(() => encodeResult = encoder.GenerateDash(config, encoder.ProbeFile(config.InputFilePath, out _), cancel: tokenSource.Token));
+            Exception thrown = null;
+            try
+            {
+                encodeResult = encoder.GenerateDash(config, encoder.ProbeFile(config.InputFilePath, out _), cancel: tokenSource.Token);
+            }
+            catch (Exception ex)
+            {
+                thrown = ex;
+            }
+            Assert.NotNull(thrown);
+            Assert.IsType<OperationCanceledException>(thrown.InnerException);
         }
 
         [Fact]

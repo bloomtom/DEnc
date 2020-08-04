@@ -1,15 +1,23 @@
 ﻿using DEnc.Commands;
 using System;
 
-namespace DEnc.Models
+namespace DEnc.Exceptions
 {
     /// <summary>
     /// Thrown when MP4Box fails to generate a DASH manifest MPD file.
     /// </summary>
-    public class DashManifestNotCreatedException : Exception
+    public class DashManifestNotCreatedException : Mp4boxFailedException
     {
         ///<inheritdoc cref="DashManifestNotCreatedException"/>
         public DashManifestNotCreatedException(string expectedMpdPath, FFmpegCommand ffmpegCommand, Mp4BoxRenderedCommand mp4boxCommand, string message) : base(message)
+        {
+            ExpectedMpdPath = expectedMpdPath;
+            FFmpegCommand = ffmpegCommand;
+            MP4BoxCommand = mp4boxCommand;
+        }
+
+        ///<inheritdoc cref="DashManifestNotCreatedException"/>
+        public DashManifestNotCreatedException(string expectedMpdPath, FFmpegCommand ffmpegCommand, Mp4BoxRenderedCommand mp4boxCommand, string message, Exception innerException) : base(message, innerException)
         {
             ExpectedMpdPath = expectedMpdPath;
             FFmpegCommand = ffmpegCommand;
@@ -34,16 +42,6 @@ namespace DEnc.Models
         /// <summary>
         /// The file path the mpd file was expected to be generated at.
         /// </summary>
-        public string ExpectedMpdPath { get; private set; }
-
-        /// <summary>
-        /// The file path the mpd file was expected to be generated at.
-        /// </summary>
-        public FFmpegCommand FFmpegCommand { get; private set; }
-
-        /// <summary>
-        /// The file path the mpd file was expected to be generated at.
-        /// </summary>
-        public Mp4BoxRenderedCommand MP4BoxCommand { get; private set; }
+        public string ExpectedMpdPath { get; protected set; }
     }
 }

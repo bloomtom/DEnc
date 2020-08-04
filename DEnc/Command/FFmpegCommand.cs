@@ -16,7 +16,7 @@ namespace DEnc.Commands
             RenderedCommand = commandArguments;
             VideoPieces = videoPieces;
             AudioPieces = audioPieces ?? new List<StreamAudioFile>();
-            SubtitlePieces = subtitlePieces ?? new List<StreamSubtitleFile>(); ;
+            SubtitlePieces = subtitlePieces ?? new List<StreamSubtitleFile>();
         }
 
         /// <summary>

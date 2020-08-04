@@ -1,5 +1,6 @@
 ﻿using DEnc.Commands;
 using DEnc.Encode;
+using DEnc.Exceptions;
 using DEnc.Models;
 using DEnc.Models.Interfaces;
 using DEnc.Serialization;
@@ -7,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 
 namespace DEnc
@@ -26,18 +28,25 @@ namespace DEnc
         /// </summary>
         /// <param name="ffmpegPath">A full path or environmental variable for ffmpeg.</param>
         /// <param name="ffprobePath">A full path or environmental variable for ffprobe.</param>
-        /// <param name="boxPath">A full path or environmental variable for MP4Box.</param>
+        /// <param name="mp4BoxPath">A full path or environmental variable for MP4Box.</param>
         ///<param name="stdoutLog">A callback which reflects stdout of ffmpeg/MP4Box. May be left null.</param>
         ///<param name="stderrLog">A callback used for logging, and for the stderr of ffmpeg/MP4Box. May be left null.</param>
         /// <param name="workingDirectory">A directory to generate output files in. If null, a temp path is used.</param>
-        public Encoder(string ffmpegPath = "ffmpeg", string ffprobePath = "ffprobe", string boxPath = "MP4Box", Action<string> stdoutLog = null, Action<string> stderrLog = null, string workingDirectory = null)
+        /// <param name="ffmpegCommandGenerator">A function which generates the ffmpeg command from the configuration and the input file data. A good default is provided if left null.</param>
+        /// <param name="mp4BoxCommandGenerator">A function which generates the MP4Box command from the configuration and input video/audio streams. A good default is provided if left null.</param>
+        public Encoder(string ffmpegPath = "ffmpeg", string ffprobePath = "ffprobe", string mp4BoxPath = "MP4Box",
+            Action<string> stdoutLog = null, Action<string> stderrLog = null, string workingDirectory = null,
+            Func<DashConfig, MediaMetadata, FFmpegCommand> ffmpegCommandGenerator = null,
+            Func<DashConfig, IEnumerable<StreamVideoFile>, IEnumerable<StreamAudioFile>, Mp4BoxRenderedCommand> mp4BoxCommandGenerator = null)
         {
             FFmpegPath = ffmpegPath;
             FFprobePath = ffprobePath;
-            BoxPath = boxPath;
+            Mp4BoxPath = mp4BoxPath;
             this.stdoutLog = stdoutLog ?? new Action<string>((s) => { });
             this.stderrLog = stderrLog ?? new Action<string>((s) => { });
             WorkingDirectory = workingDirectory ?? Path.GetTempPath();
+            FFmpegCommandGenerator = ffmpegCommandGenerator ?? GenerateFFmpegCommand;
+            Mp4BoxCommandGenerator = mp4BoxCommandGenerator ?? GenerateMp4BoxCommand;
 
             if (!Directory.Exists(WorkingDirectory))
             {
@@ -46,9 +55,9 @@ namespace DEnc
         }
 
         /// <summary>
-        /// The path to MP4Box.
+        /// A function which generates the ffmpeg command from the configuration and the input file data. A default is provided if not given.
         /// </summary>
-        public string BoxPath { get; private set; }
+        public Func<DashConfig, MediaMetadata, FFmpegCommand> FFmpegCommandGenerator { get; private set; } = GenerateFFmpegCommand;
 
         /// <summary>
         /// The path to ffmpeg.
@@ -61,21 +70,26 @@ namespace DEnc
         public string FFprobePath { get; private set; }
 
         /// <summary>
+        /// A function which generates the MP4Box command from the configuration and video/audio streams. A default is provided if not given.
+        /// </summary>
+        public Func<DashConfig, IEnumerable<StreamVideoFile>, IEnumerable<StreamAudioFile>, Mp4BoxRenderedCommand> Mp4BoxCommandGenerator { get; private set; } = GenerateMp4BoxCommand;
+
+        /// <summary>
+        /// The path to MP4Box.
+        /// </summary>
+        public string Mp4BoxPath { get; private set; }
+
+        /// <summary>
         /// The temp path to store encodes in progress.
         /// </summary>
         public string WorkingDirectory { get; private set; }
 
         /// <summary>
-        /// Re-encodes and splits an input media file into individual stream files for DASHing.
+        /// The default function for generating an ffmpeg command.
         /// </summary>
-        /// <param name="config">Configuration on which file to encode and how to perform the encoding.</param>
-        /// <param name="inputStats">Stats on the input file, usually retrieved with <see cref="ProbeFile"/></param>
-        /// <param name="progress">A progress event which is fed from the ffmpeg process. Tracks encoding progress.</param>
-        /// <param name="cancel">A cancellation token which can be used to end the encoding process prematurely.</param>
-        /// <returns></returns>
-        public FFmpegCommand EncodeVideo(DashConfig config, MediaMetadata inputStats, IProgress<double> progress = null, CancellationToken cancel = default)
+        public static FFmpegCommand GenerateFFmpegCommand(DashConfig config, MediaMetadata inputStats)
         {
-            FFmpegCommand ffmpegCommand = FFmpegCommandBuilder
+            return FFmpegCommandBuilder
                 .Initilize(
                     inPath: config.InputFilePath,
                     outDirectory: config.OutputDirectory,
@@ -87,34 +101,77 @@ namespace DEnc
                 .WithAudioCommands(inputStats.AudioStreams)
                 .WithSubtitleCommands(inputStats.SubtitleStreams)
                 .Build();
+        }
 
-            // Generate intermediates
+        /// <summary>
+        /// The default function for generating an MP4Box command.
+        /// </summary>
+        public static Mp4BoxRenderedCommand GenerateMp4BoxCommand(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles)
+        {
+            // Use a default key interval of 3s if a framerate or keyframe interval is not given.
+            int keyInterval = (config.KeyframeInterval == 0 || config.Framerate == 0) ? 3000 : (config.KeyframeInterval / config.Framerate * 1000);
+            string mpdOutputPath = Path.Combine(config.OutputDirectory, config.OutputFileName) + ".mpd";
+            var mp4boxCommand = Mp4BoxCommandBuilder.BuildMp4boxMpdCommand(
+                videoFiles: videoFiles,
+                audioFiles: audioFiles,
+                mpdOutputPath: mpdOutputPath,
+                keyInterval: keyInterval,
+                additionalFlags: config.Options.AdditionalMP4BoxFlags);
+            return mp4boxCommand;
+        }
+
+
+        /// <summary>
+        /// Re-encodes and splits an input media file into individual stream files for DASHing.
+        /// </summary>
+        /// <param name="config">Configuration on which file to encode and how to perform the encoding.</param>
+        /// <param name="inputStats">Stats on the input file, usually retrieved with <see cref="ProbeFile"/></param>
+        /// <param name="progress">A progress event which is fed from the ffmpeg process. Tracks encoding progress.</param>
+        /// <param name="cancel">A cancellation token which can be used to end the encoding process prematurely.</param>
+        /// <returns></returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Tried action is best effort mitigation")]
+        public FFmpegCommand EncodeVideo(DashConfig config, MediaMetadata inputStats, IProgress<double> progress = null, CancellationToken cancel = default)
+        {
+            FFmpegCommand ffmpegCommand = null;
+            var log = new StringBuilder();
             try
             {
+                ffmpegCommand = FFmpegCommandGenerator(config, inputStats);
+
                 ExecutionResult ffResult;
-                stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.RenderedCommand}");
-                ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, (x) => { FFmpegProgressShim(x, inputStats.Duration, progress); }, cancel);
+                ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand,
+                    (x) =>
+                    {
+                        log.AppendLine(x);
+                        stdoutLog.Invoke(x);
+                    },
+                    (x) =>
+                    {
+                        log.AppendLine(x);
+                        FFmpegProgressShim(x, inputStats.Duration, progress);
+                    }, cancel);
 
                 // Detect error in ffmpeg process and cleanup, then return null.
                 if (ffResult.ExitCode != 0)
                 {
-                    stderrLog.Invoke($"ERROR: ffmpeg returned code {ffResult.ExitCode}. File: {config.InputFilePath}");
-                    CleanFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
-                    return null;
+                    throw new FFMpegFailedException(ffmpegCommand, log, $"ERROR: ffmpeg returned code {ffResult.ExitCode}. File: {config.InputFilePath}");
                 }
             }
             catch (Exception ex)
             {
-                CleanFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
+                try
+                {
+                    CleanFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
+                }
+                catch (Exception)
+                {
+                }
+                if (ex is FFMpegFailedException) { throw; }
+                throw new FFMpegFailedException(ffmpegCommand, log, ex.Message, ex);
+            }
+            finally
+            {
 
-                if (ex is OperationCanceledException)
-                {
-                    throw new OperationCanceledException($"Exception running ffmpeg on {config.InputFilePath}", ex);
-                }
-                else
-                {
-                    throw new Exception($"Exception running ffmpeg on {config.InputFilePath}", ex);
-                }
             }
 
             return ffmpegCommand;
@@ -141,11 +198,13 @@ namespace DEnc
         /// <returns>A value containing metadata about the artifacts of the DASHing process.</returns>
         /// <exception cref="DirectoryNotFoundException">The working directory for this class instance doesn't exist.</exception>
         /// <exception cref="ArgumentNullException">The probe data parameter is null.</exception>
-        /// <exception cref="DashManifestNotCreatedException">Everything seemed to go okay until the final step with MP4Box, where an MPD file was not generated.</exception>
+        /// <exception cref="FFMpegFailedException">The ffmpeg process returned an error code other than 0 or threw an inner exception such as <see cref="OperationCanceledException"/>.</exception>
+        /// <exception cref="Mp4boxFailedException">The MP4Box process returned an error code other than 0, threw an inner exception such as <see cref="OperationCanceledException"/>, or did not generate an MPD file.</exception>
+        /// <exception cref="DashManifestNotCreatedException">Everything seemed to go okay until the final step with MP4Box, where an MPD file was not found.</exception>
         public DashEncodeResult GenerateDash(DashConfig config, MediaMetadata probedInputData, IProgress<double> progress = null, CancellationToken cancel = default)
         {
             cancel.ThrowIfCancellationRequested();
-            
+
             if (!Directory.Exists(WorkingDirectory))
             {
                 throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
@@ -183,92 +242,20 @@ namespace DEnc
             cancel.ThrowIfCancellationRequested();
 
             FFmpegCommand ffmpegCommand = EncodeVideo(config, probedInputData, progress, cancel);
-            if (ffmpegCommand is null)
+
+            Mp4BoxRenderedCommand mp4BoxCommand = GenerateDashManifest(config, ffmpegCommand.VideoPieces, ffmpegCommand.AudioPieces, cancel, ffmpegCommand);
+
+            if (File.Exists(mp4BoxCommand.MpdPath))
             {
-                return null;
+                int maxFileIndex = ffmpegCommand.AllPieces.Max(x => x.Index);
+                IEnumerable<StreamSubtitleFile> allSubtitles = ProcessSubtitles(config, ffmpegCommand.SubtitlePieces, maxFileIndex + 1);
+                MPD mpd = PostProcessMpdFile(mp4BoxCommand.MpdPath, allSubtitles);
+
+                return new DashEncodeResult(mp4BoxCommand.MpdPath, mpd, ffmpegCommand);
             }
 
-            Mp4BoxRenderedCommand mp4BoxCommand = GenerateDashManifest(config, ffmpegCommand.VideoPieces, ffmpegCommand.AudioPieces, cancel);
-            if (mp4BoxCommand is null)
-            {
-                return null;
-            }
-
-            int maxFileIndex = ffmpegCommand.AllPieces.Max(x => x.Index);
-            IEnumerable<StreamSubtitleFile> allSubtitles = ProcessSubtitles(config, ffmpegCommand.SubtitlePieces, maxFileIndex + 1);
-
-            string mpdFilepath = mp4BoxCommand.MpdPath;
-            if (File.Exists(mpdFilepath))
-            {
-                MPD mpd = PostProcessMpdFile(mpdFilepath, allSubtitles);
-
-                return new DashEncodeResult(mpdFilepath, mpd, ffmpegCommand);
-            }
-
-            throw new DashManifestNotCreatedException(mpdFilepath, ffmpegCommand, mp4BoxCommand,
-                $"MP4Box did not produce the expected mpd file at path {mpdFilepath}. File: {config.InputFilePath}");
-        }
-
-        /// <summary>
-        /// This method takes configuration, and a set of video and audio streams, and assemb
-        /// </summary>
-        /// <param name="config"></param>
-        /// <param name="videoFiles"></param>
-        /// <param name="audioFiles"></param>
-        /// <param name="cancel"></param>
-        /// <returns></returns>
-        public Mp4BoxRenderedCommand GenerateDashManifest(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles, CancellationToken cancel)
-        {
-            // Use a default key interval of 3s if a framerate or keyframe interval is not given.
-            int keyInterval = (config.KeyframeInterval == 0 || config.Framerate == 0) ? 3000 : (config.KeyframeInterval / config.Framerate * 1000);
-
-            string mpdOutputPath = Path.Combine(config.OutputDirectory, config.OutputFileName) + ".mpd";
-            var mp4boxCommand = Mp4BoxCommandBuilder.BuildMp4boxMpdCommand(
-                videoFiles: videoFiles,
-                audioFiles: audioFiles,
-                mpdOutputPath: mpdOutputPath,
-                keyInterval: keyInterval,
-                additionalFlags: config.Options.AdditionalMP4BoxFlags);
-
-            // Generate DASH files.
-            ExecutionResult mpdResult;
-            stderrLog.Invoke($"Running MP4Box with arguments: {mp4boxCommand.RenderedCommand}");
-            try
-            {
-                mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog, cancel);
-
-                // Dash Failed TODO: Add in Progress report behavior that was excluded from this
-                // Detect error in MP4Box process and cleanup, then return null.
-                if (mpdResult.ExitCode != 0)
-                {
-                    MPD mpdFile = MPD.LoadFromFile(mpdOutputPath);
-                    var filePaths = mpdFile.GetFileNames().Select(x => Path.Combine(config.OutputDirectory, x));
-
-                    stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}. File: {config.InputFilePath}");
-                    CleanFiles(filePaths);
-                    CleanFiles(mpdResult.Output);
-
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                if (ex is OperationCanceledException)
-                {
-                    throw new OperationCanceledException($"Exception running MP4box on {config.InputFilePath}", ex);
-                }
-                else
-                {
-                    throw new Exception($"Exception running MP4box on {config.InputFilePath}", ex);
-                }
-            }
-            finally
-            {
-                CleanFiles(videoFiles.Select(x => x.Path));
-                CleanFiles(audioFiles.Select(x => x.Path));
-            }
-
-            return mp4boxCommand;
+            throw new DashManifestNotCreatedException(mp4BoxCommand.MpdPath, ffmpegCommand, mp4BoxCommand,
+                $"MP4Box did not produce the expected mpd file at path {mp4BoxCommand.MpdPath}. File: {config.InputFilePath}");
         }
 
         /// <summary>
@@ -362,6 +349,29 @@ namespace DEnc
         }
 
         /// <summary>
+        /// Returns the best guess at the three character language code for the given vtt file. Defaults to "und".
+        /// </summary>
+        protected static string GetSubtitleName(string vttFilename)
+        {
+            if (vttFilename.Contains("."))
+            {
+                var dotComponents = vttFilename.Split('.');
+                if (dotComponents.Length > 2)
+                {
+                    var possibleLang = dotComponents.Skip(1).Take(dotComponents.Length - 2);
+                    foreach (var component in possibleLang)
+                    {
+                        if (Constants.Languages.TryGetValue(component, out string languageName))
+                        {
+                            return languageName;
+                        }
+                    }
+                }
+            }
+            return "und";
+        }
+
+        /// <summary>
         /// Processes the media subtitles and finds and handles external subtitle files
         /// </summary>
         /// <param name="config">The <see cref="DashConfig"/></param>
@@ -429,26 +439,72 @@ namespace DEnc
             }
         }
 
-        private static string GetSubtitleName(string vttFilename)
+        /// <summary>
+        /// This method takes configuration, and a set of video and audio streams, and assemb
+        /// </summary>
+        /// <param name="config">The config to use to generate the MP4Box command.</param>
+        /// <param name="videoFiles">A set of video files to include in the DASH process and manifest.</param>
+        /// <param name="audioFiles">A set of audio files to include in the DASH process and manifest.</param>
+        /// <param name="cancel">A cancel token to pass to the process.</param>
+        /// <param name="originalFFmpegCommand">The ffmpeg command used to create the input files. This is for exception logging only, and may be left null.</param>
+        protected Mp4BoxRenderedCommand GenerateDashManifest(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles, CancellationToken cancel, FFmpegCommand originalFFmpegCommand = null)
         {
-            if (vttFilename.Contains("."))
+            Mp4BoxRenderedCommand mp4boxCommand = null;
+            ExecutionResult mpdResult;
+            var log = new StringBuilder();
+            try
             {
-                var dotComponents = vttFilename.Split('.');
-                if (dotComponents.Length > 2)
-                {
-                    var possibleLang = dotComponents.Skip(1).Take(dotComponents.Length - 2);
-                    foreach (var component in possibleLang)
+                mp4boxCommand = Mp4BoxCommandGenerator(config, videoFiles, audioFiles);
+                mpdResult = ManagedExecution.Start(Mp4BoxPath, mp4boxCommand.RenderedCommand,
+                    (x) =>
                     {
-                        if (Constants.Languages.TryGetValue(component, out string languageName))
+                        log.AppendLine(x);
+                        stdoutLog.Invoke(x);
+                    },
+                    (x) =>
+                    {
+                        log.AppendLine(x);
+                        stderrLog.Invoke(x);
+                    }, cancel);
+
+                if (mpdResult.ExitCode != 0)
+                {
+                    try
+                    {
+                        // Error in MP4Box.
+                        if (File.Exists(mp4boxCommand.MpdPath))
                         {
-                            return languageName;
+                            MPD mpdFile = MPD.LoadFromFile(mp4boxCommand.MpdPath);
+                            var filePaths = mpdFile.GetFileNames().Select(x => Path.Combine(config.OutputDirectory, x));
+
+                            CleanFiles(filePaths);
+                            CleanFiles(mpdResult.Output);
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        throw new Mp4boxFailedException(originalFFmpegCommand, mp4boxCommand, log, $"MP4Box returned code {mpdResult.ExitCode}.", ex);
+                    }
+                    throw new Mp4boxFailedException(originalFFmpegCommand, mp4boxCommand, log, $"MP4Box returned code {mpdResult.ExitCode}.");
+                }
+                else if (!File.Exists(mp4boxCommand.MpdPath))
+                {
+                    throw new Mp4boxFailedException(originalFFmpegCommand, mp4boxCommand, log, $"MP4Box appeared to succeed, but no MPD file was created.");
                 }
             }
-            return "und";
-        }
+            catch (Exception ex)
+            {
+                if (ex is Mp4boxFailedException) { throw; }
+                throw new Mp4boxFailedException(originalFFmpegCommand, mp4boxCommand, log, ex.Message, ex);
+            }
+            finally
+            {
+                CleanFiles(videoFiles.Select(x => x.Path));
+                CleanFiles(audioFiles.Select(x => x.Path));
+            }
 
+            return mp4boxCommand;
+        }
         /// <summary>
         /// Performs on-disk post processing of the generated MPD file.
         /// Subtitles are added, useless tags removed, etc.
@@ -497,6 +553,7 @@ namespace DEnc
             mpd.SaveToFile(filepath);
             return mpd;
         }
+
         private void FFmpegProgressShim(string ffmpegLogLine, float fileDuration, IProgress<double> progress)
         {
             if (ffmpegLogLine != null)
