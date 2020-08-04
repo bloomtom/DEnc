@@ -34,7 +34,7 @@ namespace DEnc.Commands
         private ICollection<string> AdditionalAudioFlags => options?.AdditionalAudioFlags;
         private ICollection<string> AdditionalFlags => options?.AdditionalFlags;
         private ICollection<string> AdditionalVideoFlags => options?.AdditionalVideoFlags;
-        public FfmpegRenderedCommand Build()
+        public FFmpegCommand Build()
         {
             var additionalFlags = AdditionalFlags ?? new List<string>();
             string initialArgs = $"-i \"{inputPath}\" -y -hide_banner";
@@ -50,7 +50,7 @@ namespace DEnc.Commands
 
             string parameters = String.Join("\t", allCommands);
 
-            return new FfmpegRenderedCommand(parameters, videoFiles, audioFiles, subtitleFiles);
+            return new FFmpegCommand(parameters, videoFiles, audioFiles, subtitleFiles);
         }
 
         public FFmpegCommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams)
@@ -98,7 +98,6 @@ namespace DEnc.Commands
 
                 StreamSubtitleFile command = new StreamSubtitleFile()
                 {
-                    Type = StreamType.Subtitle,
                     Index = subtitleStream.index,
                     Language = language,
                     Path = path,

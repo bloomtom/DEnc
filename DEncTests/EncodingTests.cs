@@ -52,7 +52,7 @@ namespace DEncTests
             Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath);
             DashConfig config = new DashConfig(testFileName, RunPath, Qualities, "output");
 
-            encodeResult = encoder.GenerateDash(config);
+            encodeResult = encoder.GenerateDash(config, encoder.ProbeFile(config.InputFilePath, out _));
 
             Assert.NotNull(encodeResult.DashFilePath);
             Assert.NotNull(encodeResult.DashFileContent);
@@ -67,7 +67,7 @@ namespace DEncTests
             DEnc.Encoder encoder = new DEnc.Encoder(ffmpegPath, ffprobePath, mp4boxPath);
             DashConfig config = new DashConfig(testFileName, RunPath, Qualities, "output");
 
-            Assert.Throws<OperationCanceledException>(() => encodeResult = encoder.GenerateDash(config, cancel: tokenSource.Token));
+            Assert.Throws<OperationCanceledException>(() => encodeResult = encoder.GenerateDash(config, encoder.ProbeFile(config.InputFilePath, out _), cancel: tokenSource.Token));
         }
 
         [Fact]
@@ -92,7 +92,7 @@ namespace DEncTests
 
             try
             {
-                encodeResult = encoder.GenerateDash(config);
+                encodeResult = encoder.GenerateDash(config, encoder.ProbeFile(config.InputFilePath, out _));
 
                 Assert.NotNull(encodeResult.DashFilePath);
                 Assert.NotNull(encodeResult.DashFileContent);
@@ -109,13 +109,13 @@ namespace DEncTests
         [Fact]
         public void GenerateDash_WithManySubtitleLanguages_ProducesSubtitleFiles()
         {
-            Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath)
+            Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath);
+            DashConfig config = new DashConfig(multiLanguageTestFileName, RunPath, MultiLanguageQualities, "outputlang")
             {
-                EnableStreamCopying = true
+                EnableStreamCopying = false
             };
-            DashConfig config = new DashConfig(multiLanguageTestFileName, RunPath, MultiLanguageQualities, "outputlang");
 
-            encodeResult = encoder.GenerateDash(config);
+            encodeResult = encoder.GenerateDash(config, encoder.ProbeFile(config.InputFilePath, out _));
 
             Assert.NotNull(encodeResult.DashFilePath);
             Assert.NotNull(encodeResult.DashFileContent);
@@ -128,13 +128,10 @@ namespace DEncTests
         [Fact]
         public void GenerateDash_WithManySubtitles_ProducesSubtitleFiles()
         {
-            Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath)
-            {
-                EnableStreamCopying = true
-            };
+            Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath);
             DashConfig config = new DashConfig(subtitleTestFileName, RunPath, SubtitleQualities, "outputmulti");
 
-            encodeResult = encoder.GenerateDash(config);
+            encodeResult = encoder.GenerateDash(config, encoder.ProbeFile(config.InputFilePath, out _));
 
             Assert.NotNull(encodeResult.DashFilePath);
             Assert.NotNull(encodeResult.DashFileContent);

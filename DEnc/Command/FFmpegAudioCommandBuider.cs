@@ -45,7 +45,6 @@ namespace DEnc.Commands
 
             return new StreamAudioFile
             {
-                Type = StreamType.Audio,
                 Index = audioStream.index,
                 Name = $"{language} {title}",
                 Path = path,

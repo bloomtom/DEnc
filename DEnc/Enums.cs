@@ -1,4 +1,6 @@
-﻿namespace DEnc
+﻿using DEnc.Models.Interfaces;
+
+namespace DEnc
 {
     /// <summary>
     /// Some example qualities.
@@ -137,11 +139,26 @@
         high
     }
 
-    internal enum StreamType
+    /// <summary>
+    /// Indicates the type of stream in an <see cref="IStreamFile"/>.
+    /// </summary>
+    public enum StreamType
     {
+        /// <summary>
+        /// Video stream
+        /// </summary>
         Video,
+        /// <summary>
+        /// Audio stream
+        /// </summary>
         Audio,
+        /// <summary>
+        /// Subtitle stream
+        /// </summary>
         Subtitle,
+        /// <summary>
+        /// DASH manifest
+        /// </summary>
         MPD
     }
 }

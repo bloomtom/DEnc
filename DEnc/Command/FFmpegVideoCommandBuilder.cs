@@ -37,7 +37,6 @@ namespace DEnc.Commands
 
             return new StreamVideoFile
             {
-                Type = StreamType.Video,
                 Index = index,
                 Bitrate = bitrate.ToString(),
                 Path = path,

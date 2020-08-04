@@ -1,7 +1,10 @@
 ﻿using DEnc.Serialization;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace DEnc
 {
@@ -23,6 +26,46 @@ namespace DEnc
                 sb.Replace(s, string.Empty);
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Attempts to delete the given set of files and returns a collection of the failures.
+        /// </summary>
+        /// <param name="files">The file paths to delete.</param>
+        /// <returns>A collection of failures.</returns>
+        public static IEnumerable<(string Path, Exception Ex)> DeleteFilesFromDisk(IEnumerable<string> files)
+        {
+            if (files == null) { return Enumerable.Empty<(string, Exception)>(); }
+            var failures = new List<(string, Exception)>();
+            foreach (var file in files)
+            {
+                try
+                {
+                    int attempts = 0;
+                    while (File.Exists(file))
+                    {
+                        attempts++;
+                        try
+                        {
+                            File.Delete(file);
+                        }
+                        catch (IOException)
+                        {
+                            if (attempts < 5)
+                            {
+                                Thread.Sleep(200);
+                                continue;
+                            }
+                            throw;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failures.Add((file, ex));
+                }
+            }
+            return failures;
         }
 
         /// <summary>

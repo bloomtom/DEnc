@@ -1,4 +1,5 @@
 ﻿using DEnc.Commands;
+using DEnc.Encode;
 using DEnc.Models;
 using DEnc.Models.Interfaces;
 using DEnc.Serialization;
@@ -34,16 +35,9 @@ namespace DEnc
             FFmpegPath = ffmpegPath;
             FFprobePath = ffprobePath;
             BoxPath = boxPath;
-            WorkingDirectory = workingDirectory ?? Path.GetTempPath();
-            Progress = new Dictionary<EncodingStage, double>()
-            {
-                [EncodingStage.Encode] = 0,
-                [EncodingStage.DASHify] = 0,
-                [EncodingStage.PostProcess] = 0,
-            };
-
             this.stdoutLog = stdoutLog ?? new Action<string>((s) => { });
             this.stderrLog = stderrLog ?? new Action<string>((s) => { });
+            WorkingDirectory = workingDirectory ?? Path.GetTempPath();
 
             if (!Directory.Exists(WorkingDirectory))
             {
@@ -57,18 +51,6 @@ namespace DEnc
         public string BoxPath { get; private set; }
 
         /// <summary>
-        /// If set to true, quality crushing is not performed.
-        /// You may end up with files larger then your input depending on your quality set.
-        /// </summary>
-        public bool DisableQualityCrushing { get; set; } = false;
-
-        /// <summary>
-        /// If set to true, the 'copy' quality will actually copy the media streams under some circumstances instead of running them through the encoder.
-        /// Copying is only performed if the input video streams match the desired quality pixel format, and if the desired level and profile are superior to the input video streams.
-        /// </summary>
-        public bool EnableStreamCopying { get; set; } = false;
-
-        /// <summary>
         /// The path to ffmpeg.
         /// </summary>
         public string FFmpegPath { get; private set; }
@@ -77,19 +59,70 @@ namespace DEnc
         /// The path to ffprobe.
         /// </summary>
         public string FFprobePath { get; private set; }
-        /// <summary>
-        /// The stage progress of the process
-        /// </summary>
-        public Dictionary<EncodingStage, double> Progress { get; private set; }
 
         /// <summary>
         /// The temp path to store encodes in progress.
         /// </summary>
         public string WorkingDirectory { get; private set; }
+
+        /// <summary>
+        /// Re-encodes and splits an input media file into individual stream files for DASHing.
+        /// </summary>
+        /// <param name="config">Configuration on which file to encode and how to perform the encoding.</param>
+        /// <param name="inputStats">Stats on the input file, usually retrieved with <see cref="ProbeFile"/></param>
+        /// <param name="progress">A progress event which is fed from the ffmpeg process. Tracks encoding progress.</param>
+        /// <param name="cancel">A cancellation token which can be used to end the encoding process prematurely.</param>
+        /// <returns></returns>
+        public FFmpegCommand EncodeVideo(DashConfig config, MediaMetadata inputStats, IProgress<double> progress = null, CancellationToken cancel = default)
+        {
+            FFmpegCommand ffmpegCommand = FFmpegCommandBuilder
+                .Initilize(
+                    inPath: config.InputFilePath,
+                    outDirectory: config.OutputDirectory,
+                    outBaseFilename: config.OutputFileName,
+                    options: config.Options,
+                    enableStreamCopying: config.EnableStreamCopying
+                 )
+                .WithVideoCommands(inputStats.VideoStreams, config.Qualities, config.Framerate, config.KeyframeInterval, inputStats.KBitrate)
+                .WithAudioCommands(inputStats.AudioStreams)
+                .WithSubtitleCommands(inputStats.SubtitleStreams)
+                .Build();
+
+            // Generate intermediates
+            try
+            {
+                ExecutionResult ffResult;
+                stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.RenderedCommand}");
+                ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, (x) => { FFmpegProgressShim(x, inputStats.Duration, progress); }, cancel);
+
+                // Detect error in ffmpeg process and cleanup, then return null.
+                if (ffResult.ExitCode != 0)
+                {
+                    stderrLog.Invoke($"ERROR: ffmpeg returned code {ffResult.ExitCode}. File: {config.InputFilePath}");
+                    CleanFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                CleanFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
+
+                if (ex is OperationCanceledException)
+                {
+                    throw new OperationCanceledException($"Exception running ffmpeg on {config.InputFilePath}", ex);
+                }
+                else
+                {
+                    throw new Exception($"Exception running ffmpeg on {config.InputFilePath}", ex);
+                }
+            }
+
+            return ffmpegCommand;
+        }
+
         /// <summary>
         /// Obsolete
         /// </summary>
-        /// <returns></returns>
         [Obsolete("This method has been replaced by a new API", true)]
         public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
             IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default)
@@ -98,46 +131,47 @@ namespace DEnc
         }
 
         /// <summary>
-        /// oOnverts the input file into an MPEG DASH representations.
+        /// Converts the input file into an MPEG DASH representations.
         /// This includes multiple bitrates, subtitle tracks, audio tracks, and an MPD manifest.
         /// </summary>
-        /// <param name="config"></param>
-        /// <param name="progress"></param>
-        /// <param name="cancel"></param>
-        /// <returns></returns>
-        public DashEncodeResult GenerateDash(DashConfig config, IProgress<Dictionary<EncodingStage, double>> progress = null, CancellationToken cancel = default)
+        /// <param name="config">A configuration specifying how DASHing should be performed.</param>
+        /// <param name="probedInputData">The output from running <see cref="ProbeFile"/> on the input file.</param>
+        /// <param name="progress">Gives progress through the ffmpeg process, which takes the longest of all the parts of DASHing.</param>
+        /// <param name="cancel">Allows the process to be ended part way through.</param>
+        /// <returns>A value containing metadata about the artifacts of the DASHing process.</returns>
+        /// <exception cref="DirectoryNotFoundException">The working directory for this class instance doesn't exist.</exception>
+        /// <exception cref="ArgumentNullException">The probe data parameter is null.</exception>
+        /// <exception cref="DashManifestNotCreatedException">Everything seemed to go okay until the final step with MP4Box, where an MPD file was not generated.</exception>
+        public DashEncodeResult GenerateDash(DashConfig config, MediaMetadata probedInputData, IProgress<double> progress = null, CancellationToken cancel = default)
         {
             cancel.ThrowIfCancellationRequested();
+            
             if (!Directory.Exists(WorkingDirectory))
             {
                 throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
             }
 
+            if (probedInputData == null) { throw new ArgumentNullException(nameof(probedInputData), "Probe data cannot be null. Get this parameter from calling ProbeFile."); }
+
             //Field declarations
-            MediaMetadata inputStats;
             IQuality compareQuality;
-            int inputBitrate;
             bool enableStreamCopy = false;
 
-            inputStats = ProbeFile(config.InputFilePath);
-            if (inputStats == null) { throw new NullReferenceException("ffprobe query returned a null result."); }
-
-            inputBitrate = (int)(inputStats.Bitrate / 1024);
-            if (!DisableQualityCrushing)
+            if (!config.DisableQualityCrushing)
             {
-                config.Qualities = QualityCrusher.CrushQualities(config.Qualities, inputBitrate);
+                config.Qualities = QualityCrusher.CrushQualities(config.Qualities, probedInputData.KBitrate);
             }
             compareQuality = config.Qualities.First();
 
-            if (EnableStreamCopying && compareQuality.Bitrate == 0)
+            if (config.EnableStreamCopying && compareQuality.Bitrate == 0)
             {
-                enableStreamCopy = Copyable264Infer.DetermineCopyCanBeDone(compareQuality.PixelFormat, compareQuality.Level, compareQuality.Profile.ToString(), inputStats.VideoStreams);
+                enableStreamCopy = Copyable264Infer.DetermineCopyCanBeDone(compareQuality.PixelFormat, compareQuality.Level, compareQuality.Profile.ToString(), probedInputData.VideoStreams);
             }
 
             // Set the framerate interval to match input if user has not already set
             if (config.Framerate <= 0)
             {
-                config.Framerate = (int)Math.Round(inputStats.Framerate);
+                config.Framerate = (int)Math.Round(probedInputData.Framerate);
             }
 
             // Set the keyframe interval to match input if user has not already set
@@ -146,73 +180,252 @@ namespace DEnc
                 config.KeyframeInterval = config.Framerate * 3;
             }
 
-            //This is not really the proper place to have this
-            // Logging shim for ffmpeg to get progress info
-            var ffmpegLogShim = new Action<string>(x =>
-            {
-                if (x != null)
-                {
-                    var match = Encode.Regexes.ParseProgress.Match(x);
-                    if (match.Success && TimeSpan.TryParse(match.Value, out TimeSpan p))
-                    {
-                        stdoutLog(x);
-                        float progressFloat = Math.Min(1, (float)(p.TotalMilliseconds / 1000) / inputStats.Duration);
-                        if (progress != null)
-                        {
-                            ReportProgress(progress, EncodingStage.Encode, progressFloat);
-                        }
-                    }
-                    else
-                    {
-                        stderrLog(x);
-                    }
-                }
-                else
-                {
-                    stderrLog(x);
-                }
-            });
-
             cancel.ThrowIfCancellationRequested();
-            FfmpegRenderedCommand ffmpgCommand = EncodeVideo(config, inputStats, inputBitrate, enableStreamCopy, ffmpegLogShim, cancel);
-            if (ffmpgCommand is null)
+
+            FFmpegCommand ffmpegCommand = EncodeVideo(config, probedInputData, progress, cancel);
+            if (ffmpegCommand is null)
             {
                 return null;
             }
 
-            Mp4BoxRenderedCommand mp4BoxCommand = GenerateDashManifest(config, ffmpgCommand.VideoPieces, ffmpgCommand.AudioPieces, cancel);
+            Mp4BoxRenderedCommand mp4BoxCommand = GenerateDashManifest(config, ffmpegCommand.VideoPieces, ffmpegCommand.AudioPieces, cancel);
             if (mp4BoxCommand is null)
             {
                 return null;
             }
 
-            ReportProgress(progress, EncodingStage.DASHify, 1);
-            ReportProgress(progress, EncodingStage.PostProcess, 0.3);
+            int maxFileIndex = ffmpegCommand.AllPieces.Max(x => x.Index);
+            IEnumerable<StreamSubtitleFile> allSubtitles = ProcessSubtitles(config, ffmpegCommand.SubtitlePieces, maxFileIndex + 1);
 
-            int maxFileIndex = ffmpgCommand.AllPieces.Max(x => x.Index);
-            List<StreamSubtitleFile> allSubtitles = ProcessSubtitles(config, ffmpgCommand.SubtitlePieces, maxFileIndex + 1);
+            string mpdFilepath = mp4BoxCommand.MpdPath;
+            if (File.Exists(mpdFilepath))
+            {
+                MPD mpd = PostProcessMpdFile(mpdFilepath, allSubtitles);
 
-            ReportProgress(progress, EncodingStage.PostProcess, 0.66);
+                return new DashEncodeResult(mpdFilepath, mpd, ffmpegCommand);
+            }
 
+            throw new DashManifestNotCreatedException(mpdFilepath, ffmpegCommand, mp4BoxCommand,
+                $"MP4Box did not produce the expected mpd file at path {mpdFilepath}. File: {config.InputFilePath}");
+        }
+
+        /// <summary>
+        /// This method takes configuration, and a set of video and audio streams, and assemb
+        /// </summary>
+        /// <param name="config"></param>
+        /// <param name="videoFiles"></param>
+        /// <param name="audioFiles"></param>
+        /// <param name="cancel"></param>
+        /// <returns></returns>
+        public Mp4BoxRenderedCommand GenerateDashManifest(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles, CancellationToken cancel)
+        {
+            // Use a default key interval of 3s if a framerate or keyframe interval is not given.
+            int keyInterval = (config.KeyframeInterval == 0 || config.Framerate == 0) ? 3000 : (config.KeyframeInterval / config.Framerate * 1000);
+
+            string mpdOutputPath = Path.Combine(config.OutputDirectory, config.OutputFileName) + ".mpd";
+            var mp4boxCommand = Mp4BoxCommandBuilder.BuildMp4boxMpdCommand(
+                videoFiles: videoFiles,
+                audioFiles: audioFiles,
+                mpdOutputPath: mpdOutputPath,
+                keyInterval: keyInterval,
+                additionalFlags: config.Options.AdditionalMP4BoxFlags);
+
+            // Generate DASH files.
+            ExecutionResult mpdResult;
+            stderrLog.Invoke($"Running MP4Box with arguments: {mp4boxCommand.RenderedCommand}");
             try
             {
-                string mpdFilepath = mp4BoxCommand.MpdPath;
-                if (File.Exists(mpdFilepath))
+                mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog, cancel);
+
+                // Dash Failed TODO: Add in Progress report behavior that was excluded from this
+                // Detect error in MP4Box process and cleanup, then return null.
+                if (mpdResult.ExitCode != 0)
                 {
-                    MPD mpd = PostProcessMpdFile(mpdFilepath, allSubtitles);
+                    MPD mpdFile = MPD.LoadFromFile(mpdOutputPath);
+                    var filePaths = mpdFile.GetFileNames().Select(x => Path.Combine(config.OutputDirectory, x));
 
-                    var result = new DashEncodeResult(mpd, inputStats.Metadata, TimeSpan.FromMilliseconds((inputStats.VideoStreams.FirstOrDefault()?.duration ?? 0) * 1000), mpdFilepath);
+                    stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}. File: {config.InputFilePath}");
+                    CleanFiles(filePaths);
+                    CleanFiles(mpdResult.Output);
 
-                    // Success.
-                    return result;
+                    return null;
                 }
-
-                stderrLog.Invoke($"ERROR: MP4Box did not produce the expected mpd file at path {mpdFilepath}. File: {config.InputFilePath}");
-                return null;
+            }
+            catch (Exception ex)
+            {
+                if (ex is OperationCanceledException)
+                {
+                    throw new OperationCanceledException($"Exception running MP4box on {config.InputFilePath}", ex);
+                }
+                else
+                {
+                    throw new Exception($"Exception running MP4box on {config.InputFilePath}", ex);
+                }
             }
             finally
             {
-                ReportProgress(progress, EncodingStage.PostProcess, 1);
+                CleanFiles(videoFiles.Select(x => x.Path));
+                CleanFiles(audioFiles.Select(x => x.Path));
+            }
+
+            return mp4boxCommand;
+        }
+
+        /// <summary>
+        /// Runs ffprobe on a given file on disk, and returns an interpreted result of the ffprobe data as well as the entire dataset.
+        /// </summary>
+        /// <param name="inFile">The media file to probe.</param>
+        /// <param name="rawProbe">The complete data from the ffprobe process.</param>
+        /// <returns></returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Default is used in case of unexpected input")]
+        public MediaMetadata ProbeFile(string inFile, out FFprobeData rawProbe)
+        {
+            string args = $"-print_format xml=fully_qualified=1 -show_format -show_streams -- \"{inFile}\"";
+            var exResult = ManagedExecution.Start(FFprobePath, args);
+
+            string xmlData = string.Join("\n", exResult.Output);
+
+            if (FFprobeData.Deserialize(xmlData, out rawProbe))
+            {
+                List<MediaStream> audioStreams = new List<MediaStream>();
+                List<MediaStream> videoStreams = new List<MediaStream>();
+                List<MediaStream> subtitleStreams = new List<MediaStream>();
+                foreach (var s in rawProbe.streams)
+                {
+                    switch (s.codec_type)
+                    {
+                        case "audio":
+                            audioStreams.Add(s);
+                            break;
+
+                        case "video":
+                            videoStreams.Add(s);
+                            break;
+
+                        case "subtitle":
+                            subtitleStreams.Add(s);
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
+
+                var metadata = new Dictionary<string, string>();
+                if (rawProbe.format.tag != null)
+                {
+                    foreach (var item in rawProbe.format.tag)
+                    {
+                        if (!metadata.ContainsKey(item.key))
+                        {
+                            metadata.Add(item.key.ToLower(System.Globalization.CultureInfo.InvariantCulture), item.value);
+                        }
+                    }
+                }
+
+                var firstVideoStream = videoStreams.FirstOrDefault(x => Constants.SupportedInputCodecs.ContainsKey(x.codec_name)) ?? videoStreams.First();
+
+                decimal framerate = 0;
+                long bitrate = 0;
+                if (firstVideoStream == null)
+                {
+                    // Leave them as zero.
+                }
+                else
+                {
+                    if (decimal.TryParse(firstVideoStream.r_frame_rate, out framerate)) { }
+                    else if (firstVideoStream.r_frame_rate.Contains("/"))
+                    {
+                        try
+                        {
+                            framerate = firstVideoStream.r_frame_rate
+                                .Split('/')
+                                .Select(component => decimal.Parse(component))
+                                .Aggregate((dividend, divisor) => dividend / divisor);
+                        }
+                        catch (Exception)
+                        {
+                            // Leave it as zero.
+                        }
+                    }
+
+                    bitrate = firstVideoStream.bit_rate != 0 ? firstVideoStream.bit_rate : (rawProbe.format?.bit_rate ?? 0);
+                }
+
+                float duration = rawProbe.format != null ? rawProbe.format.duration : 0;
+
+                var meta = new MediaMetadata(inFile, videoStreams, audioStreams, subtitleStreams, metadata, bitrate, framerate, duration);
+                return meta;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Processes the media subtitles and finds and handles external subtitle files
+        /// </summary>
+        /// <param name="config">The <see cref="DashConfig"/></param>
+        /// <param name="subtitleFiles">The subtitle stream files</param>
+        /// <param name="startFileIndex">The index additional subtitles need to start at. This should be the max index of the ffmpeg pieces +1</param>
+        protected static IEnumerable<StreamSubtitleFile> ProcessSubtitles(DashConfig config, IEnumerable<StreamSubtitleFile> subtitleFiles, int startFileIndex)
+        {
+            // Move subtitles found in media
+            foreach (var subFile in subtitleFiles)
+            {
+                string oldPath = subFile.Path;
+                subFile.Path = Path.Combine(config.OutputDirectory, Path.GetFileName(subFile.Path));
+                yield return subFile;
+                if (oldPath != subFile.Path)
+                {
+                    if (File.Exists(subFile.Path))
+                    {
+                        File.Delete(subFile.Path);
+                    }
+                    File.Move(oldPath, subFile.Path);
+                }
+            }
+
+            // Add external subtitles
+            string baseFilename = Path.GetFileNameWithoutExtension(config.InputFilePath);
+            foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(config.InputFilePath), baseFilename + "*", SearchOption.TopDirectoryOnly))
+            {
+                if (vttFile.EndsWith(".vtt"))
+                {
+                    string vttFilename = Path.GetFileName(vttFile);
+                    string vttName = GetSubtitleName(vttFilename);
+                    string vttOutputPath = Path.Combine(config.OutputDirectory, $"{config.OutputFileName}_subtitle_{vttName}_{startFileIndex}.vtt");
+
+                    var subFile = new StreamSubtitleFile()
+                    {
+                        Index = startFileIndex,
+                        Path = vttOutputPath,
+                        Language = $"{vttName}_{startFileIndex}"
+                    };
+                    startFileIndex++;
+                    File.Copy(vttFile, vttOutputPath, true);
+                    yield return subFile;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Removes the set of paths from disk.
+        /// </summary>
+        /// <param name="paths">A set of absolute paths.</param>
+        protected void CleanFiles(IEnumerable<string> paths)
+        {
+            var failures = Utilities.DeleteFilesFromDisk(paths);
+            foreach (var path in paths)
+            {
+                var failed = failures.Where(x => x.Path == path).FirstOrDefault();
+                if (failed == default)
+                {
+                    stderrLog.Invoke($"Deleted file {path}");
+                }
+                else
+                {
+                    stderrLog.Invoke($"Failed to delete file {path} Exception: {failed.Ex}");
+                }
             }
         }
 
@@ -240,7 +453,7 @@ namespace DEnc
         /// Performs on-disk post processing of the generated MPD file.
         /// Subtitles are added, useless tags removed, etc.
         /// </summary>
-        private static MPD PostProcessMpdFile(string filepath, List<StreamSubtitleFile> subtitles)
+        private static MPD PostProcessMpdFile(string filepath, IEnumerable<StreamSubtitleFile> subtitles)
         {
             MPD.TryLoadFromFile(filepath, out MPD mpd, out Exception ex);
             mpd.ProgramInformation = null;
@@ -284,281 +497,29 @@ namespace DEnc
             mpd.SaveToFile(filepath);
             return mpd;
         }
-
-        private void CleanOutputFiles(IEnumerable<string> files)
+        private void FFmpegProgressShim(string ffmpegLogLine, float fileDuration, IProgress<double> progress)
         {
-            if (files == null) { return; }
-            foreach (var file in files)
+            if (ffmpegLogLine != null)
             {
-                try
+                var match = Regexes.ParseProgress.Match(ffmpegLogLine);
+                if (match.Success && TimeSpan.TryParse(match.Value, out TimeSpan p))
                 {
-                    stderrLog.Invoke("Deleting file " + file);
-                    int attempts = 0;
-                    while (File.Exists(file))
+                    stdoutLog(ffmpegLogLine);
+                    float progressFloat = Math.Min(1, (float)(p.TotalMilliseconds / 1000) / fileDuration);
+                    if (progress != null)
                     {
-                        attempts++;
-                        try
-                        {
-                            File.Delete(file);
-                        }
-                        catch (IOException)
-                        {
-                            if (attempts < 5)
-                            {
-                                Thread.Sleep(200);
-                                continue;
-                            }
-                            throw;
-                        }
+                        progress.Report(progressFloat);
                     }
-                }
-                catch (Exception ex)
-                {
-                    stderrLog.Invoke(ex.ToString());
-                }
-            }
-        }
-
-        private FfmpegRenderedCommand EncodeVideo(DashConfig config, MediaMetadata inputStats, int inputBitrate, bool enableStreamCopying, Action<string> progressCallback, CancellationToken cancel)
-        {
-            FfmpegRenderedCommand ffmpegCommand = FFmpegCommandBuilder
-                .Initilize(
-                    inPath: config.InputFilePath,
-                    outDirectory: config.OutputDirectory,
-                    outBaseFilename: config.OutputFileName,
-                    options: config.Options,
-                    enableStreamCopying: enableStreamCopying
-                 )
-                .WithVideoCommands(inputStats.VideoStreams, config.Qualities, config.Framerate, config.KeyframeInterval, inputBitrate)
-                .WithAudioCommands(inputStats.AudioStreams)
-                .WithSubtitleCommands(inputStats.SubtitleStreams)
-                .Build();
-
-            // Generate intermediates
-            try
-            {
-                ExecutionResult ffResult;
-                stderrLog.Invoke($"Running ffmpeg with arguments: {ffmpegCommand.RenderedCommand}");
-                ffResult = ManagedExecution.Start(FFmpegPath, ffmpegCommand.RenderedCommand, stdoutLog, progressCallback, cancel); //TODO: Use a better log/error callback mechanism? Also use a better progress mechanism
-
-                // Detect error in ffmpeg process and cleanup, then return null.
-                if (ffResult.ExitCode != 0)
-                {
-                    stderrLog.Invoke($"ERROR: ffmpeg returned code {ffResult.ExitCode}. File: {config.InputFilePath}");
-                    CleanOutputFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                CleanOutputFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
-
-                if (ex is OperationCanceledException)
-                {
-                    throw new OperationCanceledException($"Exception running ffmpeg on {config.InputFilePath}", ex);
                 }
                 else
                 {
-                    throw new Exception($"Exception running ffmpeg on {config.InputFilePath}", ex);
+                    stderrLog(ffmpegLogLine);
                 }
             }
-
-            return ffmpegCommand;
-        }
-
-        private Mp4BoxRenderedCommand GenerateDashManifest(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles, CancellationToken cancel)
-        {
-            // Use a default key interval of 3s if a framerate or keyframe interval is not given.
-            int keyInterval = (config.KeyframeInterval == 0 || config.Framerate == 0) ? 3000 : (config.KeyframeInterval / config.Framerate * 1000);
-
-            string mpdOutputPath = Path.Combine(config.OutputDirectory, config.OutputFileName) + ".mpd";
-            var mp4boxCommand = Mp4BoxCommandBuilder.BuildMp4boxMpdCommand(
-                videoFiles: videoFiles,
-                audioFiles: audioFiles,
-                mpdOutputPath: mpdOutputPath,
-                keyInterval: keyInterval,
-                additionalFlags: config.Options.AdditionalMP4BoxFlags);
-
-            // Generate DASH files.
-            ExecutionResult mpdResult;
-            stderrLog.Invoke($"Running MP4Box with arguments: {mp4boxCommand.RenderedCommand}");
-            try
+            else
             {
-                mpdResult = ManagedExecution.Start(BoxPath, mp4boxCommand.RenderedCommand, stdoutLog, stderrLog, cancel);
-
-                // Dash Failed TODO: Add in Progress report behavior that was excluded from this
-                // Detect error in MP4Box process and cleanup, then return null.
-                if (mpdResult.ExitCode != 0)
-                {
-                    MPD mpdFile = MPD.LoadFromFile(mpdOutputPath);
-                    var filePaths = mpdFile.GetFileNames().Select(x => Path.Combine(config.OutputDirectory, x));
-
-                    stderrLog.Invoke($"ERROR: MP4Box returned code {mpdResult.ExitCode}. File: {config.InputFilePath}");
-                    CleanOutputFiles(filePaths);
-                    CleanOutputFiles(mpdResult.Output);
-
-                    return null;
-                }
+                stderrLog(ffmpegLogLine);
             }
-            catch (Exception ex)
-            {
-                if (ex is OperationCanceledException)
-                {
-                    throw new OperationCanceledException($"Exception running MP4box on {config.InputFilePath}", ex);
-                }
-                else
-                {
-                    throw new Exception($"Exception running MP4box on {config.InputFilePath}", ex);
-                }
-            }
-            finally
-            {
-                CleanOutputFiles(videoFiles.Select(x => x.Path));
-                CleanOutputFiles(audioFiles.Select(x => x.Path));
-            }
-
-            return mp4boxCommand;
-        }
-
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Default is used in case of unexpected input")]
-        private MediaMetadata ProbeFile(string inFile)
-        {
-            string args = $"-print_format xml=fully_qualified=1 -show_format -show_streams -- \"{inFile}\"";
-            var exResult = ManagedExecution.Start(FFprobePath, args);
-
-            string xmlData = string.Join("\n", exResult.Output);
-
-            if (FFprobeData.Deserialize(xmlData, out FFprobeData t))
-            {
-                List<MediaStream> audioStreams = new List<MediaStream>();
-                List<MediaStream> videoStreams = new List<MediaStream>();
-                List<MediaStream> subtitleStreams = new List<MediaStream>();
-                foreach (var s in t.streams)
-                {
-                    switch (s.codec_type)
-                    {
-                        case "audio":
-                            audioStreams.Add(s);
-                            break;
-
-                        case "video":
-                            videoStreams.Add(s);
-                            break;
-
-                        case "subtitle":
-                            subtitleStreams.Add(s);
-                            break;
-
-                        default:
-                            break;
-                    }
-                }
-
-                var metadata = new Dictionary<string, string>();
-                if (t.format.tag != null)
-                {
-                    foreach (var item in t.format.tag)
-                    {
-                        if (!metadata.ContainsKey(item.key))
-                        {
-                            metadata.Add(item.key.ToLower(System.Globalization.CultureInfo.InvariantCulture), item.value);
-                        }
-                    }
-                }
-
-                var firstVideoStream = videoStreams.FirstOrDefault(x => Constants.SupportedInputCodecs.ContainsKey(x.codec_name)) ?? videoStreams.First();
-
-                decimal framerate = 0;
-                long bitrate = 0;
-                if (firstVideoStream == null)
-                {
-                    // Leave them as zero.
-                }
-                else
-                {
-                    if (decimal.TryParse(firstVideoStream.r_frame_rate, out framerate)) { }
-                    else if (firstVideoStream.r_frame_rate.Contains("/"))
-                    {
-                        try
-                        {
-                            framerate = firstVideoStream.r_frame_rate
-                                .Split('/')
-                                .Select(component => decimal.Parse(component))
-                                .Aggregate((dividend, divisor) => dividend / divisor);
-                        }
-                        catch (Exception)
-                        {
-                            // Leave it as zero.
-                        }
-                    }
-
-                    bitrate = firstVideoStream.bit_rate != 0 ? firstVideoStream.bit_rate : (t.format?.bit_rate ?? 0);
-                }
-
-                float duration = t.format != null ? t.format.duration : 0;
-
-                var meta = new MediaMetadata(videoStreams, audioStreams, subtitleStreams, metadata, bitrate, framerate, duration);
-                return meta;
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Processes the media subtitles and finds and handles external subtitle files
-        /// </summary>
-        /// <param name="config">The <see cref="DashConfig"/></param>
-        /// <param name="subtitleFiles">The subtitle stream files</param>
-        /// <param name="startFileIndex">The index additional subtitles need to start at. This should be the max index of the ffmpeg pieces +1</param>
-        private List<StreamSubtitleFile> ProcessSubtitles(DashConfig config, IEnumerable<StreamSubtitleFile> subtitleFiles, int startFileIndex)
-        {
-            // Move subtitles found in media
-            List<StreamSubtitleFile> subtitles = new List<StreamSubtitleFile>();
-            foreach (var subFile in subtitleFiles)
-            {
-                string oldPath = subFile.Path;
-                subFile.Path = Path.Combine(config.OutputDirectory, Path.GetFileName(subFile.Path));
-                subtitles.Add(subFile);
-                if (oldPath != subFile.Path)
-                {
-                    if (File.Exists(subFile.Path))
-                    {
-                        File.Delete(subFile.Path);
-                    }
-                    File.Move(oldPath, subFile.Path);
-                }
-            }
-
-            // Add external subtitles
-            string baseFilename = Path.GetFileNameWithoutExtension(config.InputFilePath);
-            foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(config.InputFilePath), baseFilename + "*", SearchOption.TopDirectoryOnly))
-            {
-                if (vttFile.EndsWith(".vtt"))
-                {
-                    string vttFilename = Path.GetFileName(vttFile);
-                    string vttName = GetSubtitleName(vttFilename);
-                    string vttOutputPath = Path.Combine(config.OutputDirectory, $"{config.OutputFileName}_subtitle_{vttName}_{startFileIndex}.vtt");
-
-                    var subFile = new StreamSubtitleFile()
-                    {
-                        Type = StreamType.Subtitle,
-                        Index = startFileIndex,
-                        Path = vttOutputPath,
-                        Language = $"{vttName}_{startFileIndex}"
-                    };
-                    startFileIndex++;
-                    File.Copy(vttFile, vttOutputPath, true);
-                    subtitles.Add(subFile);
-                }
-            }
-
-            return subtitles;
-        }
-
-        private void ReportProgress(IProgress<Dictionary<EncodingStage, double>> reporter, EncodingStage stage, double value)
-        {
-            Progress[stage] = value;
-            reporter?.Report(Progress);
         }
     }
 }
