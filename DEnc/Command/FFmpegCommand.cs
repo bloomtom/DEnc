@@ -11,46 +11,42 @@ namespace DEnc.Commands
     public class FFmpegCommand
     {
         ///<inheritdoc cref="FFmpegCommand"/>
-        public FFmpegCommand(string commandArguments, IEnumerable<StreamVideoFile> videoPieces, IEnumerable<StreamAudioFile> audioPieces, IEnumerable<StreamSubtitleFile> subtitlePieces)
+        public FFmpegCommand(IEnumerable<string> topLevelCommands, IEnumerable<VideoStreamCommand> videoPieces, IEnumerable<AudioStreamCommand> audioPieces, IEnumerable<SubtitleStreamCommand> subtitlePieces)
         {
-            RenderedCommand = commandArguments;
-            VideoPieces = videoPieces;
-            AudioPieces = audioPieces ?? new List<StreamAudioFile>();
-            SubtitlePieces = subtitlePieces ?? new List<StreamSubtitleFile>();
+            TopLevelCommands = topLevelCommands;
+            VideoCommands = videoPieces;
+            AudioCommands = audioPieces ?? new List<AudioStreamCommand>();
+            SubtitleCommands = subtitlePieces ?? new List<SubtitleStreamCommand>();
         }
 
         /// <summary>
-        /// Returns the combined Video, Audio, and Subtitle <see cref="IStreamFile"/> pieces.
+        /// Returns the combined Video, Audio, and Subtitle <see cref="IStreamCommand"/> stream commands.
         /// </summary>
-        public IEnumerable<IStreamFile> AllPieces
-        {
-            get
-            {
-                IEnumerable<IStreamFile>[] pieces = new IEnumerable<IStreamFile>[]
-                {
-                    VideoPieces,
-                    AudioPieces,
-                    SubtitlePieces
-                };
-                return pieces.SelectMany(x => x);
-            }
-        }
+        public IEnumerable<IStreamCommand> AllStreamCommands => VideoCommands.Union<IStreamCommand>(AudioCommands).Union(SubtitleCommands);
 
         /// <summary>
-        /// A collection of all the audio streams included in this ffmpeg command.
+        /// A collection of all the audio stream commands included in this ffmpeg command.
         /// </summary>
-        public IEnumerable<StreamAudioFile> AudioPieces { get; private set; }
+        public IEnumerable<AudioStreamCommand> AudioCommands { get; private set; }
+
         /// <summary>
         /// The complete, executable ffmpeg command.
         /// </summary>
-        public string RenderedCommand { get; private set; }
+        public string RenderedCommand => string.Join("\t", TopLevelCommands.Union(AllStreamCommands.Select(x => x.Argument)));
+
         /// <summary>
-        /// A collection of all the subtitle streams included in this ffmpeg command.
+        /// A collection of all the subtitle stream commands included in this ffmpeg command.
         /// </summary>
-        public IEnumerable<StreamSubtitleFile> SubtitlePieces { get; private set; }
+        public IEnumerable<SubtitleStreamCommand> SubtitleCommands { get; private set; }
+
         /// <summary>
-        /// A collection of all the video streams included in this ffmpeg command.
+        /// The top level commands to include in the rendered ffmpeg command.
         /// </summary>
-        public IEnumerable<StreamVideoFile> VideoPieces { get; private set; }
+        public IEnumerable<string> TopLevelCommands { get; private set; }
+
+        /// <summary>
+        /// A collection of all the video stream commands included in this ffmpeg command.
+        /// </summary>
+        public IEnumerable<VideoStreamCommand> VideoCommands { get; private set; }
     }
 }

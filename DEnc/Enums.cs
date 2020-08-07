@@ -140,7 +140,7 @@ namespace DEnc
     }
 
     /// <summary>
-    /// Indicates the type of stream in an <see cref="IStreamFile"/>.
+    /// Indicates the type of stream in an <see cref="IStreamCommand"/>.
     /// </summary>
     public enum StreamType
     {

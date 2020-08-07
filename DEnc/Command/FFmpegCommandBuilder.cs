@@ -8,52 +8,82 @@ using System.Linq;
 
 namespace DEnc.Commands
 {
-    internal class FFmpegCommandBuilder
+    /// <summary>
+    /// Provides a very high level mechanism for generating an ffmpeg command which extracts streams from an input media file and prepares them for DASH encoding.
+    /// </summary>
+    public class FFmpegCommandBuilder
     {
-        private readonly List<StreamAudioFile> audioFiles;
-        private readonly bool enableStreamCopying;
-        private readonly string inputPath;
-        private readonly IEncodeOptions options;
-        private readonly string outputBaseFilename;
-        private readonly string outputDirectory;
-        private readonly List<StreamSubtitleFile> subtitleFiles;
-        private readonly List<StreamVideoFile> videoFiles;
-        private FFmpegCommandBuilder(string inPath, string outDirectory, string outBaseFilename, IEncodeOptions options, bool enableStreamCopying)
-        {
-            inputPath = inPath;
-            outputDirectory = outDirectory;
-            outputBaseFilename = outBaseFilename;
-            this.options = options;
-            this.enableStreamCopying = enableStreamCopying;
+        /// <summary>
+        /// Contains the generated set of audio stream commands.
+        /// </summary>
+        protected readonly List<AudioStreamCommand> audioFiles = new List<AudioStreamCommand>();
 
-            videoFiles = new List<StreamVideoFile>();
-            audioFiles = new List<StreamAudioFile>();
-            subtitleFiles = new List<StreamSubtitleFile>();
+        /// <summary>
+        /// Contains the generated set of subtitle commands.
+        /// </summary>
+        protected readonly List<SubtitleStreamCommand> subtitleFiles = new List<SubtitleStreamCommand>();
+
+        /// <summary>
+        /// Contains the generated set of video stream commands.
+        /// </summary>
+        protected readonly List<VideoStreamCommand> videoFiles = new List<VideoStreamCommand>();
+
+        /// <inheritdoc cref="FFmpegCommandBuilder"/>
+        /// <param name="inPath">Sets <see cref="InputPath">InputPath</see></param>
+        /// <param name="outDirectory">Sets <see cref="OutputDirectory">OutputDirectory</see></param>
+        /// <param name="outBaseFilename">Sets <see cref="OutputBaseFilename">OutputBaseFilename</see></param>
+        /// <param name="options">Sets <see cref="Options">Options</see></param>
+        /// <param name="enableStreamCopying">Sets <see cref="EnableStreamCopying">EnableStreamCopying</see></param>
+        public FFmpegCommandBuilder(string inPath, string outDirectory, string outBaseFilename, IEncodeOptions options, bool enableStreamCopying)
+        {
+            InputPath = inPath;
+            OutputDirectory = outDirectory;
+            OutputBaseFilename = outBaseFilename;
+            Options = options;
+            EnableStreamCopying = enableStreamCopying;
         }
 
-        private ICollection<string> AdditionalAudioFlags => options?.AdditionalAudioFlags;
-        private ICollection<string> AdditionalFlags => options?.AdditionalFlags;
-        private ICollection<string> AdditionalVideoFlags => options?.AdditionalVideoFlags;
-        public FFmpegCommand Build()
+        /// <summary>
+        /// Enables video stream copying on the zero quality.
+        /// </summary>
+        public bool EnableStreamCopying { get; protected set; }
+
+        /// <summary>
+        /// The absolute file path to the input file.
+        /// </summary>
+        public string InputPath { get; protected set; }
+
+        /// <summary>
+        /// Extra flags which are passed to ffmpeg.
+        /// </summary>
+        public IEncodeOptions Options { get; protected set; }
+
+        /// <summary>
+        /// The base filename given to output stream files.
+        /// </summary>
+        public string OutputBaseFilename { get; protected set; }
+
+        /// <summary>
+        /// The file path output stream files are stored in.
+        /// </summary>
+        public string OutputDirectory { get; protected set; }
+
+        /// <summary>
+        /// Generates an ffmpeg command from the internally assembled substream commands. This operation is idempotent.
+        /// </summary>
+        public virtual FFmpegCommand Build()
         {
-            var additionalFlags = AdditionalFlags ?? new List<string>();
-            string initialArgs = $"-i \"{inputPath}\" -y -hide_banner";
+            var additionalFlags = Options.AdditionalFlags ?? new List<string>();
+            List<string> initialArgs = new List<string>() { $"-i \"{InputPath}\" -y -hide_banner" };
+            initialArgs.AddRange(additionalFlags);
 
-            List<string> allCommands = new List<string>
-            {
-                initialArgs
-            };
-            allCommands.AddRange(AdditionalFlags);
-            allCommands.AddRange(videoFiles.Select(x => x.Argument));
-            allCommands.AddRange(audioFiles.Select(x => x.Argument));
-            allCommands.AddRange(subtitleFiles.Select(x => x.Argument));
-
-            string parameters = String.Join("\t", allCommands);
-
-            return new FFmpegCommand(parameters, videoFiles, audioFiles, subtitleFiles);
+            return new FFmpegCommand(initialArgs, videoFiles, audioFiles, subtitleFiles);
         }
 
-        public FFmpegCommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams)
+        /// <summary>
+        /// Generates and appends commands for the given audio streams to the internal command set.
+        /// </summary>
+        public virtual FFmpegCommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams)
         {
             if (!streams.Any())
             {
@@ -62,8 +92,8 @@ namespace DEnc.Commands
 
             foreach (MediaStream audioStream in streams)
             {
-                FFmpegAudioCommandBuilder builder = FFmpegAudioCommandBuilder.Initilize(audioStream, outputDirectory, outputBaseFilename, AdditionalAudioFlags);
-                StreamAudioFile streamFile = builder
+                FFmpegAudioCommandBuilder builder = new FFmpegAudioCommandBuilder(audioStream, OutputDirectory, OutputBaseFilename, Options.AdditionalAudioFlags);
+                AudioStreamCommand streamFile = builder
                     .WithLanguage()
                     .WithTitle()
                     .WithCodec()
@@ -74,7 +104,10 @@ namespace DEnc.Commands
             return this;
         }
 
-        public FFmpegCommandBuilder WithSubtitleCommands(IEnumerable<MediaStream> streams)
+        /// <summary>
+        /// Generates and appends commands for the given subtitle streams to the internal command set.
+        /// </summary>
+        public virtual FFmpegCommandBuilder WithSubtitleCommands(IEnumerable<MediaStream> streams)
         {
             if (!streams.Any())
             {
@@ -94,9 +127,9 @@ namespace DEnc.Commands
                     .FirstOrDefault();
                 if (language is null) language = "und";
 
-                string path = Path.Combine(outputDirectory, $"{outputBaseFilename}_subtitle_{language}_{subtitleStream.index}.vtt");
+                string path = Path.Combine(OutputDirectory, $"{OutputBaseFilename}_subtitle_{language}_{subtitleStream.index}.vtt");
 
-                StreamSubtitleFile command = new StreamSubtitleFile()
+                SubtitleStreamCommand command = new SubtitleStreamCommand()
                 {
                     Index = subtitleStream.index,
                     Language = language,
@@ -112,9 +145,11 @@ namespace DEnc.Commands
             return this;
         }
 
-        public FFmpegCommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate)
+        /// <summary>
+        /// Generates and appends commands for the given video streams to the internal command set.
+        /// </summary>
+        public virtual FFmpegCommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate)
         {
-            // TODO: TEMP(ish) for now, ideally the caller could call all the appropriate builder methods
             foreach (MediaStream video in videoStreams)
             {
                 if (!video.IsStreamValid())
@@ -124,25 +159,25 @@ namespace DEnc.Commands
 
                 foreach (IQuality quality in qualities)
                 {
-                    bool copyThisStream = enableStreamCopying && quality.Bitrate == 0;
-                    string path = Path.Combine(outputDirectory, $"{outputBaseFilename}_{(quality.Bitrate == 0 ? "original" : quality.Bitrate.ToString())}.mp4");
+                    bool copyThisStream = EnableStreamCopying && quality.Bitrate == 0 && video.codec_name.ToLowerInvariant() == "h264";
+                    string path = Path.Combine(OutputDirectory, $"{OutputBaseFilename}_{(quality.Bitrate == 0 ? "original" : quality.Bitrate.ToString())}.mp4");
 
-                    FFmpegVideoCommandBuilder videoBuilder = FFmpegVideoCommandBuilder.Initilize(video.index, quality.Bitrate, path, AdditionalVideoFlags);
+                    FFmpegH264VideoCommandBuilder videoBuilder = new FFmpegH264VideoCommandBuilder(video.index, quality.Bitrate, copyThisStream, path, Options.AdditionalVideoFlags);
 
                     if (!copyThisStream)
                     {
                         videoBuilder
                             .WithSize(quality)
-                            .WithBitrate(quality.Bitrate, defaultBitrate)
+                            .WithAverageBitrate(quality.Bitrate > 0 ? quality.Bitrate : defaultBitrate)
                             .WithPreset(quality.Preset)
                             .WithProfile(quality.Profile)
                             .WithProfileLevel(quality.Level)
                             .WithPixelFormat(quality.PixelFormat);
                     }
 
-                    StreamVideoFile videoStream = videoBuilder
+                    VideoStreamCommand videoStream = videoBuilder
                         .WithFramerate(framerate)
-                        .WithVideoCodec(video.codec_name, keyframeInterval, copyThisStream)
+                        .WithKeyframeInteval(keyframeInterval)
                         .Build();
 
                     videoFiles.Add(videoStream);
@@ -150,12 +185,6 @@ namespace DEnc.Commands
             }
 
             return this;
-        }
-
-        internal static FFmpegCommandBuilder Initilize(string inPath, string outDirectory, string outBaseFilename, IEncodeOptions options, bool enableStreamCopying)
-        {
-            FFmpegCommandBuilder builder = new FFmpegCommandBuilder(inPath, outDirectory, outBaseFilename, options, enableStreamCopying);
-            return builder;
         }
     }
 }

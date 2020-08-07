@@ -37,7 +37,7 @@ namespace DEnc
         public Encoder(string ffmpegPath = "ffmpeg", string ffprobePath = "ffprobe", string mp4BoxPath = "MP4Box",
             Action<string> stdoutLog = null, Action<string> stderrLog = null, string workingDirectory = null,
             Func<DashConfig, MediaMetadata, FFmpegCommand> ffmpegCommandGenerator = null,
-            Func<DashConfig, IEnumerable<StreamVideoFile>, IEnumerable<StreamAudioFile>, Mp4BoxRenderedCommand> mp4BoxCommandGenerator = null)
+            Func<DashConfig, IEnumerable<VideoStreamCommand>, IEnumerable<AudioStreamCommand>, Mp4BoxRenderedCommand> mp4BoxCommandGenerator = null)
         {
             FFmpegPath = ffmpegPath;
             FFprobePath = ffprobePath;
@@ -72,7 +72,7 @@ namespace DEnc
         /// <summary>
         /// A function which generates the MP4Box command from the configuration and video/audio streams. A default is provided if not given.
         /// </summary>
-        public Func<DashConfig, IEnumerable<StreamVideoFile>, IEnumerable<StreamAudioFile>, Mp4BoxRenderedCommand> Mp4BoxCommandGenerator { get; private set; } = GenerateMp4BoxCommand;
+        public Func<DashConfig, IEnumerable<VideoStreamCommand>, IEnumerable<AudioStreamCommand>, Mp4BoxRenderedCommand> Mp4BoxCommandGenerator { get; private set; } = GenerateMp4BoxCommand;
 
         /// <summary>
         /// The path to MP4Box.
@@ -89,8 +89,8 @@ namespace DEnc
         /// </summary>
         public static FFmpegCommand GenerateFFmpegCommand(DashConfig config, MediaMetadata inputStats)
         {
-            return FFmpegCommandBuilder
-                .Initilize(
+            return new FFmpegCommandBuilder
+                (
                     inPath: config.InputFilePath,
                     outDirectory: config.OutputDirectory,
                     outBaseFilename: config.OutputFileName,
@@ -106,7 +106,7 @@ namespace DEnc
         /// <summary>
         /// The default function for generating an MP4Box command.
         /// </summary>
-        public static Mp4BoxRenderedCommand GenerateMp4BoxCommand(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles)
+        public static Mp4BoxRenderedCommand GenerateMp4BoxCommand(DashConfig config, IEnumerable<VideoStreamCommand> videoFiles, IEnumerable<AudioStreamCommand> audioFiles)
         {
             // Use a default key interval of 3s if a framerate or keyframe interval is not given.
             int keyInterval = (config.KeyframeInterval == 0 || config.Framerate == 0) ? 3000 : (config.KeyframeInterval / config.Framerate * 1000);
@@ -161,7 +161,7 @@ namespace DEnc
             {
                 try
                 {
-                    CleanFiles(ffmpegCommand.AllPieces.Select(x => x.Path));
+                    CleanFiles(ffmpegCommand.AllStreamCommands.Select(x => x.Path));
                 }
                 catch (Exception)
                 {
@@ -243,12 +243,12 @@ namespace DEnc
 
             FFmpegCommand ffmpegCommand = EncodeVideo(config, probedInputData, progress, cancel);
 
-            Mp4BoxRenderedCommand mp4BoxCommand = GenerateDashManifest(config, ffmpegCommand.VideoPieces, ffmpegCommand.AudioPieces, cancel, ffmpegCommand);
+            Mp4BoxRenderedCommand mp4BoxCommand = GenerateDashManifest(config, ffmpegCommand.VideoCommands, ffmpegCommand.AudioCommands, cancel, ffmpegCommand);
 
             if (File.Exists(mp4BoxCommand.MpdPath))
             {
-                int maxFileIndex = ffmpegCommand.AllPieces.Max(x => x.Index);
-                IEnumerable<StreamSubtitleFile> allSubtitles = ProcessSubtitles(config, ffmpegCommand.SubtitlePieces, maxFileIndex + 1);
+                int maxFileIndex = ffmpegCommand.AllStreamCommands.Max(x => x.Index);
+                IEnumerable<SubtitleStreamCommand> allSubtitles = ProcessSubtitles(config, ffmpegCommand.SubtitleCommands, maxFileIndex + 1);
                 MPD mpd = PostProcessMpdFile(mp4BoxCommand.MpdPath, allSubtitles);
 
                 return new DashEncodeResult(mp4BoxCommand.MpdPath, mpd, ffmpegCommand);
@@ -377,7 +377,7 @@ namespace DEnc
         /// <param name="config">The <see cref="DashConfig"/></param>
         /// <param name="subtitleFiles">The subtitle stream files</param>
         /// <param name="startFileIndex">The index additional subtitles need to start at. This should be the max index of the ffmpeg pieces +1</param>
-        protected static IEnumerable<StreamSubtitleFile> ProcessSubtitles(DashConfig config, IEnumerable<StreamSubtitleFile> subtitleFiles, int startFileIndex)
+        protected static IEnumerable<SubtitleStreamCommand> ProcessSubtitles(DashConfig config, IEnumerable<SubtitleStreamCommand> subtitleFiles, int startFileIndex)
         {
             // Move subtitles found in media
             foreach (var subFile in subtitleFiles)
@@ -405,7 +405,7 @@ namespace DEnc
                     string vttName = GetSubtitleName(vttFilename);
                     string vttOutputPath = Path.Combine(config.OutputDirectory, $"{config.OutputFileName}_subtitle_{vttName}_{startFileIndex}.vtt");
 
-                    var subFile = new StreamSubtitleFile()
+                    var subFile = new SubtitleStreamCommand()
                     {
                         Index = startFileIndex,
                         Path = vttOutputPath,
@@ -447,7 +447,7 @@ namespace DEnc
         /// <param name="audioFiles">A set of audio files to include in the DASH process and manifest.</param>
         /// <param name="cancel">A cancel token to pass to the process.</param>
         /// <param name="originalFFmpegCommand">The ffmpeg command used to create the input files. This is for exception logging only, and may be left null.</param>
-        protected Mp4BoxRenderedCommand GenerateDashManifest(DashConfig config, IEnumerable<StreamVideoFile> videoFiles, IEnumerable<StreamAudioFile> audioFiles, CancellationToken cancel, FFmpegCommand originalFFmpegCommand = null)
+        protected Mp4BoxRenderedCommand GenerateDashManifest(DashConfig config, IEnumerable<VideoStreamCommand> videoFiles, IEnumerable<AudioStreamCommand> audioFiles, CancellationToken cancel, FFmpegCommand originalFFmpegCommand = null)
         {
             Mp4BoxRenderedCommand mp4boxCommand = null;
             ExecutionResult mpdResult;
@@ -509,7 +509,7 @@ namespace DEnc
         /// Performs on-disk post processing of the generated MPD file.
         /// Subtitles are added, useless tags removed, etc.
         /// </summary>
-        private static MPD PostProcessMpdFile(string filepath, IEnumerable<StreamSubtitleFile> subtitles)
+        private static MPD PostProcessMpdFile(string filepath, IEnumerable<SubtitleStreamCommand> subtitles)
         {
             MPD.TryLoadFromFile(filepath, out MPD mpd, out Exception ex);
             mpd.ProgramInformation = null;

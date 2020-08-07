@@ -19,8 +19,8 @@ namespace DEnc.Commands
         /// <param name="keyInterval">The key interval in milliseconds. This can be derived from: (keyframeInterval / framerate) * 1000</param>
         /// <param name="additionalFlags">Additional flags to pass to MP4Box. Should include a profile</param>
         internal static Mp4BoxRenderedCommand BuildMp4boxMpdCommand(
-            IEnumerable<StreamVideoFile> videoFiles,
-            IEnumerable<StreamAudioFile> audioFiles,
+            IEnumerable<VideoStreamCommand> videoFiles,
+            IEnumerable<AudioStreamCommand> audioFiles,
             string mpdOutputPath,
             int keyInterval,
             ICollection<string> additionalFlags)
