@@ -587,7 +587,11 @@ namespace DEnc
         private MPD PostProcessMpdFile(string filepath, IEnumerable<SubtitleStreamCommand> subtitles)
         {
             MPD.TryLoadFromFile(filepath, out MPD mpd, out Exception ex);
-            mpd.ProgramInformation = null;
+            mpd.ProgramInformation = new ProgramInformation()
+            {
+                Title = $"DEnc",
+                MoreInformationURL = "https://github.com/bloomtom/DEnc"
+            };
 
             // Get the highest used representation ID so we can increment it for new IDs.
             int.TryParse(mpd.Period.Max(x => x.AdaptationSet.Max(y => y.Representation.Max(z => z.Id))), out int representationId);
