@@ -141,7 +141,7 @@ namespace DEnc
         /// Re-encodes and splits an input media file into individual stream files for DASHing.
         /// </summary>
         /// <param name="config">Configuration on which file to encode and how to perform the encoding.</param>
-        /// <param name="inputStats">Stats on the input file, usually retrieved with <see cref="ProbeFile"/></param>
+        /// <param name="inputStats">Stats on the input file, usually retrieved with <see cref="ProbeFile">ProbeFile</see></param>
         /// <param name="progress">A progress event which is fed from the ffmpeg process. Tracks encoding progress.</param>
         /// <param name="cancel">A cancellation token which can be used to end the encoding process prematurely.</param>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Tried action is best effort mitigation")]
@@ -192,21 +192,11 @@ namespace DEnc
         }
 
         /// <summary>
-        /// Obsolete
-        /// </summary>
-        [Obsolete("This method has been replaced by a new API", true)]
-        public DashEncodeResult GenerateDash(string inFile, string outFilename, int framerate, int keyframeInterval,
-            IEnumerable<IQuality> qualities, IEncodeOptions options = null, string outDirectory = null, IProgress<IEnumerable<EncodeStageProgress>> progress = null, CancellationToken cancel = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <summary>
         /// Converts the input file into an MPEG DASH representations.
         /// This includes multiple bitrates, subtitle tracks, audio tracks, and an MPD manifest.
         /// </summary>
         /// <param name="config">A configuration specifying how DASHing should be performed.</param>
-        /// <param name="probedInputData">The output from running <see cref="ProbeFile"/> on the input file.</param>
+        /// <param name="probedInputData">The output from running <see cref="ProbeFile">ProbeFile</see> on the input file.</param>
         /// <param name="progress">Gives progress through the ffmpeg process, which takes the longest of all the parts of DASHing.</param>
         /// <param name="cancel">Allows the process to be ended part way through.</param>
         /// <returns>A value containing metadata about the artifacts of the DASHing process.</returns>
