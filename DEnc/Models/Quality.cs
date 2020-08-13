@@ -13,9 +13,7 @@ namespace DEnc.Models
         {
         }
 
-        /// <summary>
-        ///
-        /// </summary>
+        /// <inheritdoc cref="Quality"/>
         /// <param name="width">Width of frame in pixels</param>
         /// <param name="height">Height of frame in pixels</param>
         /// <param name="bitrate">The bitrate in kb/s</param>
@@ -28,9 +26,7 @@ namespace DEnc.Models
             Preset = preset;
         }
 
-        /// <summary>
-        ///
-        /// </summary>
+        /// <inheritdoc cref="Quality"/>
         /// <param name="width">Width of frame in pixels</param>
         /// <param name="height">Height of frame in pixels</param>
         /// <param name="bitrate">The bitrate in kb/s</param>
