@@ -3,10 +3,10 @@
     /// <summary>
     /// Container used to house the rendered Mp4Box command and its output path
     /// </summary>
-    public class Mp4BoxRenderedCommand
+    public class Mp4BoxCommand
     {
-        ///<inheritdoc cref="Mp4BoxRenderedCommand"/>
-        public Mp4BoxRenderedCommand(string renderedCommand, string mpdPath)
+        ///<inheritdoc cref="Mp4BoxCommand"/>
+        public Mp4BoxCommand(string renderedCommand, string mpdPath)
         {
             RenderedCommand = renderedCommand;
             MpdPath = mpdPath;

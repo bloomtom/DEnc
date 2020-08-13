@@ -9,7 +9,7 @@ namespace DEnc.Exceptions
     public class DashManifestNotCreatedException : Mp4boxFailedException
     {
         ///<inheritdoc cref="DashManifestNotCreatedException"/>
-        public DashManifestNotCreatedException(string expectedMpdPath, FFmpegCommand ffmpegCommand, Mp4BoxRenderedCommand mp4boxCommand, string message) : base(message)
+        public DashManifestNotCreatedException(string expectedMpdPath, FFmpegCommand ffmpegCommand, Mp4BoxCommand mp4boxCommand, string message) : base(message)
         {
             ExpectedMpdPath = expectedMpdPath;
             FFmpegCommand = ffmpegCommand;
@@ -17,7 +17,7 @@ namespace DEnc.Exceptions
         }
 
         ///<inheritdoc cref="DashManifestNotCreatedException"/>
-        public DashManifestNotCreatedException(string expectedMpdPath, FFmpegCommand ffmpegCommand, Mp4BoxRenderedCommand mp4boxCommand, string message, Exception innerException) : base(message, innerException)
+        public DashManifestNotCreatedException(string expectedMpdPath, FFmpegCommand ffmpegCommand, Mp4BoxCommand mp4boxCommand, string message, Exception innerException) : base(message, innerException)
         {
             ExpectedMpdPath = expectedMpdPath;
             FFmpegCommand = ffmpegCommand;
