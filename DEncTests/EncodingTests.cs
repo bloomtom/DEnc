@@ -1,4 +1,5 @@
 ﻿using DEnc;
+using DEnc.Commands;
 using DEnc.Models;
 using System;
 using System.Collections.Generic;
@@ -21,12 +22,14 @@ namespace DEncTests
         private readonly List<DashEncodeResult> encodeResults;
         private bool disposedValue;
         private DashEncodeResult encodeResult;
+
         public EncodingTests()
         {
             encodeResults = new List<DashEncodeResult>();
         }
 
         private List<Quality> MultiLanguageQualities => new List<Quality>() { new Quality(640, 480, 768, H264Preset.ultrafast) };
+
         private List<Quality> Qualities => new List<Quality>()
         {
             new Quality(1920, 1080, 4000, H264Preset.fast),
@@ -35,15 +38,46 @@ namespace DEncTests
         };
 
         private string RunPath => Environment.CurrentDirectory;
+
         private List<Quality> SubtitleQualities => new List<Quality>()
         {
             new Quality(1280, 720, 9000, H264Preset.fast),
             new Quality(640, 480, 768, H264Preset.faster)
         };
+
         public void Dispose()
         {
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        [Fact]
+        public void GenerateDash_MidLevelApiOptions_ProducesCorrectDashEncodeResult()
+        {
+            Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath,
+                ffmpegCommandGenerator: (dashConfig, mediaMetadata) =>
+                {
+                    DashConfig c = dashConfig;
+                    MediaMetadata m = mediaMetadata;
+                    FFmpegCommand r = Encoder.GenerateFFmpegCommand(c, m);
+                    return r;
+                },
+                mp4BoxCommandGenerator: (dashConfig, videoStreams, audioStreams) =>
+                {
+                    DashConfig c = dashConfig;
+                    IEnumerable<VideoStreamCommand> v = videoStreams;
+                    IEnumerable<AudioStreamCommand> a = audioStreams;
+                    Mp4BoxCommand r = Encoder.GenerateMp4BoxCommand(c, v, a);
+                    return r;
+                });
+            DashConfig config = new DashConfig(testFileName, RunPath, Qualities, "output");
+
+            encodeResult = encoder.GenerateDash(config, encoder.ProbeFile(config.InputFilePath, out _));
+
+            Assert.NotNull(encodeResult.DashFilePath);
+            Assert.NotNull(encodeResult.DashFileContent);
+            Assert.NotNull(encodeResult.MediaFiles);
+            Assert.Equal(4, encodeResult.MediaFiles.Count());
         }
 
         [Fact]
