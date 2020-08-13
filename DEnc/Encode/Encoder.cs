@@ -386,57 +386,10 @@ namespace DEnc
         }
 
         /// <summary>
-        /// Processes the media subtitles and finds and handles external subtitle files
-        /// </summary>
-        /// <param name="config">The <see cref="DashConfig"/></param>
-        /// <param name="subtitleFiles">The subtitle stream files</param>
-        /// <param name="startFileIndex">The index additional subtitles need to start at. This should be the max index of the ffmpeg pieces +1</param>
-        protected static IEnumerable<SubtitleStreamCommand> ProcessSubtitles(DashConfig config, IEnumerable<SubtitleStreamCommand> subtitleFiles, int startFileIndex)
-        {
-            // Move subtitles found in media
-            foreach (var subFile in subtitleFiles)
-            {
-                string oldPath = subFile.Path;
-                subFile.Path = Path.Combine(config.OutputDirectory, Path.GetFileName(subFile.Path));
-                yield return subFile;
-                if (oldPath != subFile.Path)
-                {
-                    if (File.Exists(subFile.Path))
-                    {
-                        File.Delete(subFile.Path);
-                    }
-                    File.Move(oldPath, subFile.Path);
-                }
-            }
-
-            // Add external subtitles
-            string baseFilename = Path.GetFileNameWithoutExtension(config.InputFilePath);
-            foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(config.InputFilePath), baseFilename + "*", SearchOption.TopDirectoryOnly))
-            {
-                if (vttFile.EndsWith(".vtt"))
-                {
-                    string vttFilename = Path.GetFileName(vttFile);
-                    string vttName = GetSubtitleName(vttFilename);
-                    string vttOutputPath = Path.Combine(config.OutputDirectory, $"{config.OutputFileName}_subtitle_{vttName}_{startFileIndex}.vtt");
-
-                    var subFile = new SubtitleStreamCommand()
-                    {
-                        Index = startFileIndex,
-                        Path = vttOutputPath,
-                        Language = $"{vttName}_{startFileIndex}"
-                    };
-                    startFileIndex++;
-                    File.Copy(vttFile, vttOutputPath, true);
-                    yield return subFile;
-                }
-            }
-        }
-
-        /// <summary>
         /// Removes the set of paths from disk.
         /// </summary>
         /// <param name="paths">A set of absolute paths.</param>
-        protected void CleanFiles(IEnumerable<string> paths)
+        protected virtual void CleanFiles(IEnumerable<string> paths)
         {
             var failures = Utilities.DeleteFilesFromDisk(paths);
             foreach (var path in paths)
@@ -461,7 +414,7 @@ namespace DEnc
         /// <param name="audioFiles">A set of audio files to include in the DASH process and manifest.</param>
         /// <param name="cancel">A cancel token to pass to the process.</param>
         /// <param name="originalFFmpegCommand">The ffmpeg command used to create the input files. This is for exception logging only, and may be left null.</param>
-        protected Mp4BoxCommand GenerateDashManifest(DashConfig config, IEnumerable<VideoStreamCommand> videoFiles, IEnumerable<AudioStreamCommand> audioFiles, CancellationToken cancel, FFmpegCommand originalFFmpegCommand = null)
+        protected virtual Mp4BoxCommand GenerateDashManifest(DashConfig config, IEnumerable<VideoStreamCommand> videoFiles, IEnumerable<AudioStreamCommand> audioFiles, CancellationToken cancel, FFmpegCommand originalFFmpegCommand = null)
         {
             Mp4BoxCommand mp4boxCommand = null;
             ExecutionResult mpdResult;
@@ -521,29 +474,21 @@ namespace DEnc
         }
 
         /// <summary>
-        /// Performs on-disk post processing of the generated MPD file.
-        /// Subtitles are added, useless tags removed, etc.
+        /// Generates an MPD AdaptationSet representing a subtitle stream.
         /// </summary>
-        private static MPD PostProcessMpdFile(string filepath, IEnumerable<SubtitleStreamCommand> subtitles)
+        /// <param name="representationId">A generated unique representation ID to use for this AdaptationSet's </param>
+        /// <param name="subtitle">The subtitle stream, representing a VTT file on disk.</param>
+        /// <param name="nextRepresentationId">Must be set to the next unused representation ID.</param>
+        /// <returns>An adaptation set to add to the output MPD file. May be null to not add this subtitle.</returns>
+        protected virtual AdaptationSet GenerateSubtitleAdaptationSet(int representationId, SubtitleStreamCommand subtitle, out int nextRepresentationId)
         {
-            MPD.TryLoadFromFile(filepath, out MPD mpd, out Exception ex);
-            mpd.ProgramInformation = null;
-
-            // Get the highest used representation ID so we can increment it for new IDs.
-            int.TryParse(mpd.Period.Max(x => x.AdaptationSet.Max(y => y.Representation.Max(z => z.Id))), out int representationId);
-            representationId++;
-
-            foreach (var period in mpd.Period)
+            nextRepresentationId = representationId + 1;
+            return new AdaptationSet()
             {
-                // Add subtitles to this period.
-                foreach (var sub in subtitles)
-                {
-                    period.AdaptationSet.Add(new AdaptationSet()
-                    {
-                        MimeType = "text/vtt",
-                        Lang = sub.Language,
-                        ContentType = "text",
-                        Representation = new List<Representation>()
+                MimeType = "text/vtt",
+                Lang = subtitle.Language,
+                ContentType = "text",
+                Representation = new List<Representation>()
                         {
                             new Representation()
                             {
@@ -551,22 +496,63 @@ namespace DEnc
                                 Bandwidth = 256,
                                 BaseURL = new List<string>()
                                 {
-                                    Path.GetFileName(sub.Path)
+                                    Path.GetFileName(subtitle.Path)
                                 }
                             }
                         },
-                        Role = new DescriptorType()
-                        {
-                            SchemeIdUri = "urn:gpac:dash:role:2013",
-                            Value = $"{sub.Language} {representationId}"
-                        }
-                    });
-                    representationId++;
+                Role = new DescriptorType()
+                {
+                    SchemeIdUri = "urn:gpac:dash:role:2013",
+                    Value = $"{subtitle.Language} {representationId}"
+                }
+            };
+        }
+
+        /// <summary>
+        /// Processes the media subtitles and finds and handles external subtitle files
+        /// </summary>
+        /// <param name="config">The <see cref="DashConfig"/></param>
+        /// <param name="subtitleFiles">The subtitle stream files</param>
+        /// <param name="startFileIndex">The index additional subtitles need to start at. This should be the max index of the ffmpeg pieces +1</param>
+        protected virtual IEnumerable<SubtitleStreamCommand> ProcessSubtitles(DashConfig config, IEnumerable<SubtitleStreamCommand> subtitleFiles, int startFileIndex)
+        {
+            // Move subtitles found in media
+            foreach (var subFile in subtitleFiles)
+            {
+                string oldPath = subFile.Path;
+                subFile.Path = Path.Combine(config.OutputDirectory, Path.GetFileName(subFile.Path));
+                yield return subFile;
+                if (oldPath != subFile.Path)
+                {
+                    if (File.Exists(subFile.Path))
+                    {
+                        File.Delete(subFile.Path);
+                    }
+                    File.Move(oldPath, subFile.Path);
                 }
             }
 
-            mpd.SaveToFile(filepath);
-            return mpd;
+            // Add external subtitles
+            string baseFilename = Path.GetFileNameWithoutExtension(config.InputFilePath);
+            foreach (var vttFile in Directory.EnumerateFiles(Path.GetDirectoryName(config.InputFilePath), baseFilename + "*", SearchOption.TopDirectoryOnly))
+            {
+                if (vttFile.EndsWith(".vtt"))
+                {
+                    string vttFilename = Path.GetFileName(vttFile);
+                    string vttName = GetSubtitleName(vttFilename);
+                    string vttOutputPath = Path.Combine(config.OutputDirectory, $"{config.OutputFileName}_subtitle_{vttName}_{startFileIndex}.vtt");
+
+                    var subFile = new SubtitleStreamCommand()
+                    {
+                        Index = startFileIndex,
+                        Path = vttOutputPath,
+                        Language = $"{vttName}_{startFileIndex}"
+                    };
+                    startFileIndex++;
+                    File.Copy(vttFile, vttOutputPath, true);
+                    yield return subFile;
+                }
+            }
         }
 
         private void FFmpegProgressShim(string ffmpegLogLine, float fileDuration, IProgress<double> progress)
@@ -592,6 +578,37 @@ namespace DEnc
             {
                 stderrLog(ffmpegLogLine);
             }
+        }
+
+        /// <summary>
+        /// Performs on-disk post processing of the generated MPD file.
+        /// Subtitles are added, useless tags removed, etc.
+        /// </summary>
+        private MPD PostProcessMpdFile(string filepath, IEnumerable<SubtitleStreamCommand> subtitles)
+        {
+            MPD.TryLoadFromFile(filepath, out MPD mpd, out Exception ex);
+            mpd.ProgramInformation = null;
+
+            // Get the highest used representation ID so we can increment it for new IDs.
+            int.TryParse(mpd.Period.Max(x => x.AdaptationSet.Max(y => y.Representation.Max(z => z.Id))), out int representationId);
+            representationId++;
+
+            foreach (var period in mpd.Period)
+            {
+                // Add subtitles to this period.
+                foreach (var sub in subtitles)
+                {
+                    AdaptationSet subtitleSet = GenerateSubtitleAdaptationSet(representationId, sub, out int nextRepresentationId);
+                    if (subtitleSet != null)
+                    {
+                        period.AdaptationSet.Add(subtitleSet);
+                        representationId = nextRepresentationId;
+                    }
+                }
+            }
+
+            mpd.SaveToFile(filepath);
+            return mpd;
         }
     }
 }
