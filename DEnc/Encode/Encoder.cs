@@ -255,7 +255,7 @@ namespace DEnc
                 IEnumerable<SubtitleStreamCommand> allSubtitles = ProcessSubtitles(config, ffmpegCommand.SubtitleCommands, maxFileIndex + 1);
                 MPD mpd = PostProcessMpdFile(mp4BoxCommand.MpdPath, allSubtitles);
 
-                return new DashEncodeResult(mp4BoxCommand.MpdPath, mpd, ffmpegCommand);
+                return new DashEncodeResult(mp4BoxCommand.MpdPath, mpd, ffmpegCommand, probedInputData);
             }
 
             throw new DashManifestNotCreatedException(mp4BoxCommand.MpdPath, ffmpegCommand, mp4BoxCommand,

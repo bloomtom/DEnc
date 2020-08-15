@@ -17,11 +17,13 @@ namespace DEnc
         /// <param name="mpdPath">The exact path to the mpd file.</param>
         /// <param name="mpdContent">The exact mpd content deserialized from XML.</param>
         /// <param name="ffmpegCommand">The generated ffmpeg command used when </param>
-        public DashEncodeResult(string mpdPath, MPD mpdContent, FFmpegCommand ffmpegCommand)
+        /// <param name="inputMetadata">Metadata about the DASHed input file.</param>
+        public DashEncodeResult(string mpdPath, MPD mpdContent, FFmpegCommand ffmpegCommand, MediaMetadata inputMetadata)
         {
             DashFileContent = mpdContent;
             DashFilePath = mpdPath;
             FFmpegCommand = ffmpegCommand;
+            InputMetadata = inputMetadata;
         }
 
         /// <summary>
