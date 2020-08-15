@@ -34,27 +34,6 @@ namespace DEnc
     }
 
     /// <summary>
-    /// The stages of the encoding process
-    /// </summary>
-    public enum EncodingStage
-    {
-        /// <summary>
-        /// Encoding the video.
-        /// </summary>
-        Encode = 1,
-
-        /// <summary>
-        /// Generating DASH Manifest.
-        /// </summary>
-        DASHify = 2,
-
-        /// <summary>
-        /// Processing subtitles.
-        /// </summary>
-        PostProcess = 3
-    }
-
-    /// <summary>
     /// H264 Presets.
     /// The slower the preset the smaller the file size and the better the quality, but the longer the encoding time.
     /// Has diminishing returns near the end of each spectrum
