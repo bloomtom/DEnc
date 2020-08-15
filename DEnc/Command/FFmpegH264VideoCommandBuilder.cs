@@ -118,12 +118,12 @@ namespace DEnc.Commands
         /// </summary>
         public FFmpegH264VideoCommandBuilder WithPreset(H264Preset preset)
         {
-            if (preset == H264Preset.none)
+            if (preset == H264Preset.None)
             {
                 return this;
             }
 
-            TryAddSimpleCommand($"-preset {preset}", preset.ToString());
+            TryAddSimpleCommand($"-preset {preset.ToString().ToLowerInvariant()}", preset.ToString());
             return this;
         }
 
@@ -132,11 +132,11 @@ namespace DEnc.Commands
         /// </summary>
         public FFmpegH264VideoCommandBuilder WithProfile(H264Profile profile)
         {
-            if (profile == H264Profile.none)
+            if (profile == H264Profile.None)
             {
                 return this;
             }
-            TryAddSimpleCommand($"-profile:v {profile}", profile.ToString());
+            TryAddSimpleCommand($"-profile:v {profile.ToString().ToLowerInvariant()}", profile.ToString());
             return this;
         }
 

@@ -61,12 +61,12 @@ namespace DEnc.Models
         /// <summary>
         /// ffmpeg preset (veryfast, fast, medium, slow, veryslow).
         /// </summary>
-        public H264Preset Preset { get; set; } = H264Preset.medium;
+        public H264Preset Preset { get; set; } = H264Preset.Medium;
 
         /// <summary>
         /// ffmpeg h264 encoding profile (Baseline, Main, High,)
         /// </summary>
-        public H264Profile Profile { get; set; } = H264Profile.high;
+        public H264Profile Profile { get; set; } = H264Profile.High;
 
         /// <summary>
         /// Width of frame in pixels.
@@ -79,7 +79,7 @@ namespace DEnc.Models
         {
             switch (q)
             {
-                case DefaultQuality.potato:
+                case DefaultQuality.Potato:
                     return new List<Quality>()
                     {
                         new Quality(1280, 720, 1600, preset),
@@ -87,7 +87,7 @@ namespace DEnc.Models
                         new Quality(640, 360, 500, preset)
                     };
 
-                case DefaultQuality.low:
+                case DefaultQuality.Low:
                     return new List<Quality>()
                     {
                         new Quality(1280, 720, 2400, preset),
@@ -95,7 +95,7 @@ namespace DEnc.Models
                         new Quality(640, 360, 700, preset),
                     };
 
-                case DefaultQuality.high:
+                case DefaultQuality.High:
                     return new List<Quality>()
                     {
                         new Quality(1920, 1080, 6000, preset),
@@ -103,7 +103,7 @@ namespace DEnc.Models
                         new Quality(1280, 720, 2000, preset),
                     };
 
-                case DefaultQuality.ultra:
+                case DefaultQuality.Ultra:
                     return new List<Quality>()
                     {
                         new Quality(1920, 1080, 8000, preset),
@@ -130,7 +130,7 @@ namespace DEnc.Models
         /// </summary>
         public static Quality GetCopyQuality()
         {
-            return new Quality(0, 0, 0, H264Preset.none);
+            return new Quality(0, 0, 0, H264Preset.None);
         }
 
         /// <summary>

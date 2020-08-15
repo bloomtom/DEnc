@@ -10,27 +10,27 @@ namespace DEnc
         /// <summary>
         /// Very low quality. Low grade SD to low grade HD.
         /// </summary>
-        potato,
+        Potato,
 
         /// <summary>
         /// Low quality HD.
         /// </summary>
-        low,
+        Low,
 
         /// <summary>
         /// Decent quality HD.
         /// </summary>
-        medium,
+        Medium,
 
         /// <summary>
         /// Good quality HD.
         /// </summary>
-        high,
+        High,
 
         /// <summary>
         /// Excellent quality HD.
         /// </summary>
-        ultra
+        Ultra
     }
 
     /// <summary>
@@ -65,52 +65,52 @@ namespace DEnc
         /// <summary>
         /// Reserved for copy quality.
         /// </summary>
-        none = 0,
+        None = 0,
 
         /// <summary>
         /// ~55% faster than medium. Extremely low quality.
         /// </summary>
-        ultrafast,
+        Ultrafast,
 
         /// <summary>
         /// ~50% faster than medium. Very low quality.
         /// </summary>
-        superfast,
+        Superfast,
 
         /// <summary>
         /// ~45% faster than medium. Quality begins dropping significantly here.
         /// </summary>
-        veryfast,
+        Veryfast,
 
         /// <summary>
         /// ~25% faster than medium.
         /// </summary>
-        faster,
+        Faster,
 
         /// <summary>
         /// ~10% faster than medium.
         /// </summary>
-        fast,
+        Fast,
 
         /// <summary>
         /// Default preset, quality begins to peak here.
         /// </summary>
-        medium,
+        Medium,
 
         /// <summary>
         /// ~40% slower than medium. Marginally better quality than medium.
         /// </summary>
-        slow,
+        Slow,
 
         /// <summary>
         /// ~100% slower than medium. Near identical quality to slow.
         /// </summary>
-        slower,
+        Slower,
 
         /// <summary>
         /// ~280% slower than medium. Near identical quality to slower.
         /// </summary>
-        veryslow
+        Veryslow
     }
 
     /// <summary>
@@ -121,22 +121,22 @@ namespace DEnc
         /// <summary>
         /// Reserved for copy profile.
         /// </summary>
-        none = 0,
+        None = 0,
 
         /// <summary>
         /// Ideal for older mobile devices.
         /// </summary>
-        baseline,
+        Baseline,
 
         /// <summary>
         /// Ideal for web streaming and the majority of devices.
         /// </summary>
-        main,
+        Main,
 
         /// <summary>
         /// Ideal for high-end mobile device, or direct playback on a computer.
         /// </summary>
-        high
+        High
     }
 
     /// <summary>

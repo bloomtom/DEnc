@@ -28,21 +28,21 @@ namespace DEncTests
             encodeResults = new List<DashEncodeResult>();
         }
 
-        private List<Quality> MultiLanguageQualities => new List<Quality>() { new Quality(640, 480, 768, H264Preset.ultrafast) };
+        private List<Quality> MultiLanguageQualities => new List<Quality>() { new Quality(640, 480, 768, H264Preset.Ultrafast) };
 
         private List<Quality> Qualities => new List<Quality>()
         {
-            new Quality(1920, 1080, 4000, H264Preset.fast),
-            new Quality(1280, 720, 1280, H264Preset.fast),
-            new Quality(640, 480, 768, H264Preset.fast)
+            new Quality(1920, 1080, 4000, H264Preset.Fast),
+            new Quality(1280, 720, 1280, H264Preset.Fast),
+            new Quality(640, 480, 768, H264Preset.Fast)
         };
 
         private string RunPath => Environment.CurrentDirectory;
 
         private List<Quality> SubtitleQualities => new List<Quality>()
         {
-            new Quality(1280, 720, 9000, H264Preset.fast),
-            new Quality(640, 480, 768, H264Preset.faster)
+            new Quality(1280, 720, 9000, H264Preset.Fast),
+            new Quality(640, 480, 768, H264Preset.Faster)
         };
 
         public void Dispose()
