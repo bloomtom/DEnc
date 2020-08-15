@@ -60,6 +60,17 @@ namespace DEnc.Models
         }
 
         /// <summary>
+        /// Defines configurations to use when generating transcoding commands for audio streams.
+        /// </summary>
+        public AudioConfig AudioConfig { get; set; } = new AudioConfig();
+
+        /// <summary>
+        /// If set to true, quality crushing is not performed.
+        /// You may end up with files larger then your input depending on your quality set.
+        /// </summary>
+        public bool DisableQualityCrushing { get; set; } = false;
+
+        /// <summary>
         /// If true, the input video stream will be copied instead of re-encoded if possible.
         /// </summary>
         public bool EnableStreamCopying { get; set; } = true;
@@ -83,12 +94,6 @@ namespace DEnc.Models
         /// The encoding options of the video. Defaults as <see cref="H264EncodeOptions"/>
         /// </summary>
         public IEncodeOptions Options { get; set; } = new H264EncodeOptions();
-
-        /// <summary>
-        /// If set to true, quality crushing is not performed.
-        /// You may end up with files larger then your input depending on your quality set.
-        /// </summary>
-        public bool DisableQualityCrushing { get; set; } = false;
 
         /// <summary>
         /// The Full or Relative path of the output directory

@@ -115,7 +115,7 @@ namespace DEnc
                     enableStreamCopying: config.EnableStreamCopying
                  )
                 .WithVideoCommands(inputStats.VideoStreams, config.Qualities, config.Framerate, config.KeyframeInterval, inputStats.KBitrate)
-                .WithAudioCommands(inputStats.AudioStreams)
+                .WithAudioCommands(inputStats.AudioStreams, config.AudioConfig)
                 .WithSubtitleCommands(inputStats.SubtitleStreams)
                 .Build();
         }
@@ -314,7 +314,7 @@ namespace DEnc
                     }
                 }
 
-                var firstVideoStream = videoStreams.FirstOrDefault(x => Constants.SupportedInputCodecs.ContainsKey(x.codec_name)) ?? videoStreams.First();
+                var firstVideoStream = videoStreams.FirstOrDefault(x => Constants.SupportedInputCodecs.ContainsKey(x.codec_name)) ?? videoStreams.FirstOrDefault();
 
                 decimal framerate = 0;
                 long bitrate = 0;

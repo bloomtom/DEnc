@@ -1,7 +1,6 @@
 ﻿using DEnc.Models;
 using DEnc.Models.Interfaces;
 using DEnc.Serialization;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -46,7 +45,7 @@ namespace DEnc.Commands
         /// <summary>
         /// Enables video stream copying on the zero quality.
         /// </summary>
-        public bool EnableStreamCopying { get; protected set; }
+        public bool EnableStreamCopying { get; set; } = true;
 
         /// <summary>
         /// The absolute file path to the input file.
@@ -83,7 +82,7 @@ namespace DEnc.Commands
         /// <summary>
         /// Generates and appends commands for the given audio streams to the internal command set.
         /// </summary>
-        public virtual FFmpegCommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams)
+        public virtual FFmpegCommandBuilder WithAudioCommands(IEnumerable<MediaStream> streams, AudioConfig config)
         {
             if (!streams.Any())
             {
@@ -92,11 +91,13 @@ namespace DEnc.Commands
 
             foreach (MediaStream audioStream in streams)
             {
+                int maxBitrate = audioStream.channels * config.MaxPerChannelBitrate;
                 FFmpegAudioCommandBuilder builder = new FFmpegAudioCommandBuilder(audioStream, OutputDirectory, OutputBaseFilename, Options.AdditionalAudioFlags);
-                AudioStreamCommand streamFile = builder
+                var streamFile = builder
                     .WithLanguage()
                     .WithTitle()
-                    .WithCodec()
+                    .WithCodec(maxBitrate: maxBitrate)
+                    .WithDownmix(config.DownmixMode)
                     .Build();
 
                 audioFiles.Add(streamFile);

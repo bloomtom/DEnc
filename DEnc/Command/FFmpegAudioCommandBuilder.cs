@@ -65,13 +65,37 @@ namespace DEnc.Commands
         /// </summary>
         /// <param name="codec">The codec to use if the input is not supported. AAC is decent.</param>
         /// <param name="maxBitrate">The input bitrate is matched unless it exceeds this value, in which case it's capped here. Bits per second.</param>
-        public FFmpegAudioCommandBuilder WithCodec(string codec = "aac", int maxBitrate = 160000)
+        public FFmpegAudioCommandBuilder WithCodec(string codec = "aac", int maxBitrate = 1024 * 192)
         {
             if (codecSupported)
             {
                 return this;
             }
             commands.Add($"-c:a {codec} -b:a {System.Math.Min(maxBitrate, audioStream.bit_rate * 1.1)}");
+            return this;
+        }
+
+        /// <summary>
+        /// Downmixes to two channels if necessary.
+        /// </summary>
+        public FFmpegAudioCommandBuilder WithDownmix(DownmixMode mode)
+        {
+            if (audioStream.channels > 2)
+            {
+                switch (mode)
+                {
+                    case DownmixMode.Default:
+                        commands.Add("-ac 2");
+                        break;
+
+                    case DownmixMode.Nightmode:
+                        commands.Add("-af \"pan=stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR\"");
+                        break;
+
+                    default:
+                        break;
+                }
+            }
             return this;
         }
 

@@ -52,6 +52,33 @@ namespace DEncTests
         }
 
         [Fact]
+        public void GenerateDash_Downmixing_ProducesCorrectDashEncodeResult()
+        {
+            Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath);
+            DashConfig config = new DashConfig(multiLanguageTestFileName, RunPath, Qualities, "output")
+            {
+                AudioConfig = new AudioConfig()
+                {
+                    DownmixMode = DownmixMode.Default,
+                    MaxPerChannelBitrate = 1024 * 80
+                }
+            };
+
+            encodeResult = encoder.GenerateDash(config, encoder.ProbeFile(config.InputFilePath, out _));
+
+            var scans = encodeResult.MediaFiles.Select((x) => encoder.ProbeFile(x, out _));
+            foreach (var outputStream in scans)
+            {
+                if (outputStream.VideoStreams.Count() > 0) { continue; }
+                foreach (var aStream in outputStream.AudioStreams)
+                {
+                    Assert.True(aStream.channels <= 2);
+                    Assert.True(aStream.max_bit_rate <= config.AudioConfig.MaxPerChannelBitrate * aStream.channels);
+                }
+            }
+        }
+
+        [Fact]
         public void GenerateDash_MidLevelApiOptions_ProducesCorrectDashEncodeResult()
         {
             Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath,
