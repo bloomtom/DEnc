@@ -1,5 +1,4 @@
-﻿using DEnc.Models.Interfaces;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -45,7 +44,7 @@ namespace DEnc.Models
 
             if (outputFileName != null)
             {
-                OutputFileName = Utilities.CleanFileName(outputFileName);
+                OutputFileName = CleanFileName(outputFileName);
                 if (OutputFileName.Length == 0)
                 {
                     throw new ArgumentNullException("Output filename is null or empty after removal of illegal characters.");
@@ -109,5 +108,15 @@ namespace DEnc.Models
         /// A collection of <see cref="IQuality"/> items for this video
         /// </summary>
         public IEnumerable<IQuality> Qualities { get; internal set; }
+
+        private static string CleanFileName(string name)
+        {
+            var sb = new System.Text.StringBuilder(name);
+            foreach (string s in Constants.IllegalFilesystemChars)
+            {
+                sb.Replace(s, string.Empty);
+            }
+            return sb.ToString();
+        }
     }
 }

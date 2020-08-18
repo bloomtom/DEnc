@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace DEnc.Encode
+namespace DEnc
 {
     internal static class Regexes
     {

@@ -1,8 +1,6 @@
 ﻿using DEnc.Commands;
-using DEnc.Encode;
 using DEnc.Exceptions;
 using DEnc.Models;
-using DEnc.Models.Interfaces;
 using DEnc.Serialization;
 using System;
 using System.Collections.Generic;
@@ -353,6 +351,46 @@ namespace DEnc
         }
 
         /// <summary>
+        /// Attempts to delete the given set of files and returns a collection of the failures.
+        /// </summary>
+        /// <param name="files">The file paths to delete.</param>
+        /// <returns>A collection of failures.</returns>
+        protected static IEnumerable<(string Path, Exception Ex)> DeleteFilesFromDisk(IEnumerable<string> files)
+        {
+            if (files == null) { return Enumerable.Empty<(string, Exception)>(); }
+            var failures = new List<(string, Exception)>();
+            foreach (var file in files)
+            {
+                try
+                {
+                    int attempts = 0;
+                    while (File.Exists(file))
+                    {
+                        attempts++;
+                        try
+                        {
+                            File.Delete(file);
+                        }
+                        catch (IOException)
+                        {
+                            if (attempts < 5)
+                            {
+                                Thread.Sleep(200);
+                                continue;
+                            }
+                            throw;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failures.Add((file, ex));
+                }
+            }
+            return failures;
+        }
+
+        /// <summary>
         /// Returns the best guess at the three character language code for the given vtt file. Defaults to "und".
         /// </summary>
         protected static string GetSubtitleName(string vttFilename)
@@ -381,7 +419,7 @@ namespace DEnc
         /// <param name="paths">A set of absolute paths.</param>
         protected virtual void CleanFiles(IEnumerable<string> paths)
         {
-            var failures = Utilities.DeleteFilesFromDisk(paths);
+            var failures = DeleteFilesFromDisk(paths);
             foreach (var path in paths)
             {
                 var failed = failures.Where(x => x.Path == path).FirstOrDefault();

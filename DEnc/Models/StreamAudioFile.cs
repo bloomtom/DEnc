@@ -1,6 +1,4 @@
-﻿using DEnc.Models.Interfaces;
-
-namespace DEnc.Models
+﻿namespace DEnc.Models
 {
     /// <summary>
     /// The definition for how to produce an audio stream during encoding.

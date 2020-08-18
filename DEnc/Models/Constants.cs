@@ -1,7 +1,7 @@
 ﻿using DEnc.Models;
 using System.Collections.Generic;
 
-namespace DEnc
+namespace DEnc.Models
 {
     internal static class Constants
     {

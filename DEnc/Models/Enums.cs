@@ -1,6 +1,4 @@
-﻿using DEnc.Models.Interfaces;
-
-namespace DEnc
+﻿namespace DEnc.Models
 {
     /// <summary>
     /// Some example qualities.
@@ -127,14 +125,17 @@ namespace DEnc
         /// Video stream
         /// </summary>
         Video,
+
         /// <summary>
         /// Audio stream
         /// </summary>
         Audio,
+
         /// <summary>
         /// Subtitle stream
         /// </summary>
         Subtitle,
+
         /// <summary>
         /// DASH manifest
         /// </summary>

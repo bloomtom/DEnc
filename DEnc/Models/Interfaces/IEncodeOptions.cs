@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace DEnc.Models.Interfaces
+namespace DEnc.Models
 {
     /// <summary>
     /// An interface for encoder options.

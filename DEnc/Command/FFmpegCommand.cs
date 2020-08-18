@@ -1,5 +1,4 @@
 ﻿using DEnc.Models;
-using DEnc.Models.Interfaces;
 using System.Collections.Generic;
 using System.Linq;
 

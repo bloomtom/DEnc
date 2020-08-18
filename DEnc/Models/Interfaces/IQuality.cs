@@ -1,4 +1,4 @@
-﻿namespace DEnc.Models.Interfaces
+﻿namespace DEnc.Models
 {
     /// <summary>
     /// An interface for a quality. Qualities are used to specify the outputs for DASHification.

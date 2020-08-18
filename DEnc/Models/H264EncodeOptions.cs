@@ -1,5 +1,4 @@
-﻿using DEnc.Models.Interfaces;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace DEnc.Models
 {

@@ -1,6 +1,4 @@
-﻿using DEnc.Models.Interfaces;
-
-namespace DEnc.Models
+﻿namespace DEnc.Models
 {
     /// <summary>
     /// The definition for how to produce a video stream during encoding.

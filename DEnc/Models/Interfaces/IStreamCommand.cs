@@ -1,4 +1,4 @@
-﻿namespace DEnc.Models.Interfaces
+﻿namespace DEnc.Models
 {
     /// <summary>
     /// A generic stream for ffmpeg command rendering
