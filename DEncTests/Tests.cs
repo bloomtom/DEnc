@@ -95,6 +95,12 @@ namespace DEncTests
             Assert.True(crushed.Where(x => x.Bitrate == 2000).SingleOrDefault() != null);
             Assert.Equal(3, crushed.Count());
 
+            // Test crushing disabled
+            crushed = QualityCrusher.CrushQualities(testQualities, 1000, 0.0);
+            Assert.Equal(3, crushed.Count());
+            crushed = QualityCrusher.CrushQualities(testQualities, 1000, -0.1);
+            Assert.Equal(3, crushed.Count());
+
             // Test crush to bottom
             crushed = QualityCrusher.CrushQualities(testQualities, 400);
             Assert.True(crushed.Where(x => x.Bitrate == 0).SingleOrDefault() != null);

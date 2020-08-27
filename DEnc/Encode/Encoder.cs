@@ -219,10 +219,7 @@ namespace DEnc
             IQuality compareQuality;
             bool enableStreamCopy = false;
 
-            if (!config.DisableQualityCrushing)
-            {
-                config.Qualities = QualityCrusher.CrushQualities(config.Qualities, probedInputData.KBitrate);
-            }
+            config.Qualities = QualityCrusher.CrushQualities(config.Qualities, probedInputData.KBitrate, config.QualityCrushTolerance);
             compareQuality = config.Qualities.First();
 
             if (config.EnableStreamCopying && compareQuality.Bitrate == 0)
@@ -275,80 +272,76 @@ namespace DEnc
 
             string xmlData = string.Join("\n", exResult.Output);
 
-            if (FFprobeData.Deserialize(xmlData, out rawProbe))
+            rawProbe = FFprobeData.Deserialize(xmlData);
+            List<MediaStream> audioStreams = new List<MediaStream>();
+            List<MediaStream> videoStreams = new List<MediaStream>();
+            List<MediaStream> subtitleStreams = new List<MediaStream>();
+            foreach (var s in rawProbe.streams)
             {
-                List<MediaStream> audioStreams = new List<MediaStream>();
-                List<MediaStream> videoStreams = new List<MediaStream>();
-                List<MediaStream> subtitleStreams = new List<MediaStream>();
-                foreach (var s in rawProbe.streams)
+                switch (s.codec_type)
                 {
-                    switch (s.codec_type)
-                    {
-                        case "audio":
-                            audioStreams.Add(s);
-                            break;
+                    case "audio":
+                        audioStreams.Add(s);
+                        break;
 
-                        case "video":
-                            videoStreams.Add(s);
-                            break;
+                    case "video":
+                        videoStreams.Add(s);
+                        break;
 
-                        case "subtitle":
-                            subtitleStreams.Add(s);
-                            break;
+                    case "subtitle":
+                        subtitleStreams.Add(s);
+                        break;
 
-                        default:
-                            break;
-                    }
+                    default:
+                        break;
                 }
-
-                var metadata = new Dictionary<string, string>();
-                if (rawProbe.format.tag != null)
-                {
-                    foreach (var item in rawProbe.format.tag)
-                    {
-                        if (!metadata.ContainsKey(item.key))
-                        {
-                            metadata.Add(item.key.ToLower(System.Globalization.CultureInfo.InvariantCulture), item.value);
-                        }
-                    }
-                }
-
-                var firstVideoStream = videoStreams.FirstOrDefault(x => Constants.SupportedInputCodecs.ContainsKey(x.codec_name)) ?? videoStreams.FirstOrDefault();
-
-                decimal framerate = 0;
-                long bitrate = 0;
-                if (firstVideoStream == null)
-                {
-                    // Leave them as zero.
-                }
-                else
-                {
-                    if (decimal.TryParse(firstVideoStream.r_frame_rate, out framerate)) { }
-                    else if (firstVideoStream.r_frame_rate.Contains("/"))
-                    {
-                        try
-                        {
-                            framerate = firstVideoStream.r_frame_rate
-                                .Split('/')
-                                .Select(component => decimal.Parse(component))
-                                .Aggregate((dividend, divisor) => dividend / divisor);
-                        }
-                        catch (Exception)
-                        {
-                            // Leave it as zero.
-                        }
-                    }
-
-                    bitrate = firstVideoStream.bit_rate != 0 ? firstVideoStream.bit_rate : (rawProbe.format?.bit_rate ?? 0);
-                }
-
-                float duration = rawProbe.format != null ? rawProbe.format.duration : 0;
-
-                var meta = new MediaMetadata(inFile, videoStreams, audioStreams, subtitleStreams, metadata, bitrate, framerate, duration);
-                return meta;
             }
 
-            return null;
+            var metadata = new Dictionary<string, string>();
+            if (rawProbe.format.tag != null)
+            {
+                foreach (var item in rawProbe.format.tag)
+                {
+                    if (!metadata.ContainsKey(item.key))
+                    {
+                        metadata.Add(item.key.ToLower(System.Globalization.CultureInfo.InvariantCulture), item.value);
+                    }
+                }
+            }
+
+            var firstVideoStream = videoStreams.FirstOrDefault(x => Constants.SupportedInputCodecs.ContainsKey(x.codec_name)) ?? videoStreams.FirstOrDefault();
+
+            decimal framerate = 0;
+            long bitrate = 0;
+            if (firstVideoStream == null)
+            {
+                // Leave them as zero.
+            }
+            else
+            {
+                if (decimal.TryParse(firstVideoStream.r_frame_rate, out framerate)) { }
+                else if (firstVideoStream.r_frame_rate.Contains("/"))
+                {
+                    try
+                    {
+                        framerate = firstVideoStream.r_frame_rate
+                            .Split('/')
+                            .Select(component => decimal.Parse(component))
+                            .Aggregate((dividend, divisor) => dividend / divisor);
+                    }
+                    catch (Exception)
+                    {
+                        // Leave it as zero.
+                    }
+                }
+
+                bitrate = firstVideoStream.bit_rate != 0 ? firstVideoStream.bit_rate : (rawProbe.format?.bit_rate ?? 0);
+            }
+
+            float duration = rawProbe.format != null ? rawProbe.format.duration : 0;
+
+            var meta = new MediaMetadata(inFile, videoStreams, audioStreams, subtitleStreams, metadata, bitrate, framerate, duration);
+            return meta;
         }
 
         /// <summary>

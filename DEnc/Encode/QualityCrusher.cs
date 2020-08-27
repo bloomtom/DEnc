@@ -9,22 +9,22 @@ namespace DEnc
     /// </summary>
     public static class QualityCrusher
     {
-        private const double minCrushTolerance = 0.90;
-
         /// <summary>
         /// Removes qualities higher than the given bitrate and substitutes removed qualities with a copy quality.
         /// </summary>
         /// <param name="qualities">The quality collection to crush.</param>
         /// <param name="bitrateKbs">Bitrate in kb/s.</param>
+        /// <param name="crushTolerance">A multiplier.<br/>Setting this to zero causes the set to be returned unmodified.</param>
         /// <returns></returns>
-        public static IEnumerable<IQuality> CrushQualities(IEnumerable<IQuality> qualities, long bitrateKbs)
+        public static IEnumerable<IQuality> CrushQualities(IEnumerable<IQuality> qualities, long bitrateKbs, double crushTolerance = 0.90)
         {
+            if (crushTolerance <= 0) { return qualities; }
             if (qualities == null || !qualities.Any()) { return qualities; }
 
             IQuality defaultQuality = qualities.First();
 
             // Crush
-            var crushed = qualities.Where(x => x.Bitrate < bitrateKbs * minCrushTolerance).Distinct();
+            var crushed = qualities.Where(x => x.Bitrate < bitrateKbs * crushTolerance).Distinct();
             if (crushed.Count() < qualities.Count())
             {
                 if (crushed.Where(x => x.Bitrate == 0).FirstOrDefault() == null)

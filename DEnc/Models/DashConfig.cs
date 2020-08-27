@@ -69,10 +69,12 @@ namespace DEnc.Models
         public AudioConfig AudioConfig { get; set; } = new AudioConfig();
 
         /// <summary>
-        /// If set to true, quality crushing is not performed.
-        /// You may end up with files larger then your input depending on your quality set.
+        /// Specifies the minimum tolerance to use when determining quality crushing.<br/>
+        /// This value is multiplied by the input file bitrate, and any bitrates less than the result are removed and replaced with a single copy quality.<br/>
+        /// The default value 0.9 allows qualities up to 90% of the input bitrate before a copy quality is used instead.
+        /// <br/>Set to zero to disable quality crushing. Going over 1.0 is allowed, but doesn't make a lot of sense.
         /// </summary>
-        public bool DisableQualityCrushing { get; set; } = false;
+        public double QualityCrushTolerance { get; set; } = 0.9;
 
         /// <summary>
         /// If true, the input video stream will be copied instead of re-encoded if possible.
