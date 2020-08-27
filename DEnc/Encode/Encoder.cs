@@ -198,7 +198,6 @@ namespace DEnc
         /// <param name="progress">Gives progress through the ffmpeg process, which takes the longest of all the parts of DASHing.</param>
         /// <param name="cancel">Allows the process to be ended part way through.</param>
         /// <returns>A value containing metadata about the artifacts of the DASHing process.</returns>
-        /// <exception cref="DirectoryNotFoundException">The working directory for this class instance doesn't exist.</exception>
         /// <exception cref="ArgumentNullException">The probe data parameter is null.</exception>
         /// <exception cref="FFMpegFailedException">The ffmpeg process returned an error code other than 0 or threw an inner exception such as <see cref="OperationCanceledException"/>.</exception>
         /// <exception cref="Mp4boxFailedException">The MP4Box process returned an error code other than 0, threw an inner exception such as <see cref="OperationCanceledException"/>, or did not generate an MPD file.</exception>
@@ -207,11 +206,6 @@ namespace DEnc
         public DashEncodeResult GenerateDash(DashConfig config, MediaMetadata probedInputData, IProgress<double> progress = null, CancellationToken cancel = default)
         {
             cancel.ThrowIfCancellationRequested();
-
-            if (!Directory.Exists(WorkingDirectory))
-            {
-                throw new DirectoryNotFoundException("The given path for the working directory doesn't exist.");
-            }
 
             if (probedInputData == null) { throw new ArgumentNullException(nameof(probedInputData), "Probe data cannot be null. Get this parameter from calling ProbeFile."); }
 
