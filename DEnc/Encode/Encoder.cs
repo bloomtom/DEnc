@@ -203,6 +203,7 @@ namespace DEnc
         /// <exception cref="FFMpegFailedException">The ffmpeg process returned an error code other than 0 or threw an inner exception such as <see cref="OperationCanceledException"/>.</exception>
         /// <exception cref="Mp4boxFailedException">The MP4Box process returned an error code other than 0, threw an inner exception such as <see cref="OperationCanceledException"/>, or did not generate an MPD file.</exception>
         /// <exception cref="DashManifestNotCreatedException">Everything seemed to go okay until the final step with MP4Box, where an MPD file was not found.</exception>
+        /// <exception cref="OperationCanceledException">The cancellation token was triggered.</exception>
         public DashEncodeResult GenerateDash(DashConfig config, MediaMetadata probedInputData, IProgress<double> progress = null, CancellationToken cancel = default)
         {
             cancel.ThrowIfCancellationRequested();

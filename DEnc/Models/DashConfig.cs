@@ -11,6 +11,11 @@ namespace DEnc.Models
     public class DashConfig
     {
         ///<inheritdoc cref="DashConfig"/>
+        /// <exception cref="FileNotFoundException">The input path does not exist.</exception>
+        /// <exception cref="DirectoryNotFoundException">The output directory does not exist.</exception>
+        /// <exception cref="ArgumentNullException">The qualities parameter is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">The qualities parameter is an empty set.</exception>
+        /// <exception cref="ArgumentException">The set of qualities contains two or more qualities with the same bitrate.</exception>
         public DashConfig(string inputFilePath, string outputDirectory, IEnumerable<IQuality> qualities, string outputFileName = null)
         {
             if (inputFilePath == null || !File.Exists(inputFilePath))
@@ -18,7 +23,7 @@ namespace DEnc.Models
                 throw new FileNotFoundException("Input path does not exist.");
             }
 
-            if (!Directory.Exists(outputDirectory))
+            if (outputDirectory == null || !Directory.Exists(outputDirectory))
             {
                 throw new DirectoryNotFoundException("Output directory does not exist.");
             }
@@ -102,7 +107,7 @@ namespace DEnc.Models
         /// <summary>
         /// The base output filename, without extension. This name is used as the base for the output names.
         /// </summary>
-        public string OutputFileName { get; }
+        public string OutputFileName { get; set; }
 
         /// <summary>
         /// A collection of <see cref="IQuality"/> items for this video
