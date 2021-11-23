@@ -32,7 +32,8 @@
         public DownmixMode DownmixMode { get; set; } = DownmixMode.None;
 
         /// <summary>
-        /// The maximum per-channel bitrate to allow before transcoding the stream.
+        /// The absolute maximum per-channel bitrate to allow.<br/>
+        /// Output bitrate is also capped by the input bitrate.
         /// </summary>
         public int MaxPerChannelBitrate { get; set; } = 1024 * 96;
     }
