@@ -139,7 +139,7 @@ namespace DEncTests
                 thrown = ex;
             }
             Assert.NotNull(thrown);
-            Assert.IsType<OperationCanceledException>(thrown.InnerException);
+            Assert.IsType<OperationCanceledException>(thrown);
         }
 
         [Fact]

@@ -28,7 +28,7 @@ namespace DEncTests
             };
 
             var exception = Assert.Throws<ArgumentException>("qualities", () => new DashConfig(testFileName, Environment.CurrentDirectory, qualities));
-            Assert.Equal("Duplicate quality bitrates found. Bitrates must be distinct.\r\nParameter name: qualities", exception.Message);
+            Assert.Contains("duplicate", exception.Message, StringComparison.InvariantCultureIgnoreCase);
         }
 
         [Fact]
