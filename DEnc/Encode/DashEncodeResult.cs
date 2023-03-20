@@ -16,13 +16,15 @@ namespace DEnc
         /// </summary>
         /// <param name="mpdPath">The exact path to the mpd file.</param>
         /// <param name="mpdContent">The exact mpd content deserialized from XML.</param>
-        /// <param name="ffmpegCommand">The generated ffmpeg command used when </param>
+        /// <param name="ffmpegCommand">The generated ffmpeg command used to transcode the media.</param>
+        /// <param name="mp4boxCommand">The generated MP4Box command used to generate the manifest.</param>
         /// <param name="inputMetadata">Metadata about the DASHed input file.</param>
-        public DashEncodeResult(string mpdPath, MPD mpdContent, FFmpegCommand ffmpegCommand, MediaMetadata inputMetadata)
+        public DashEncodeResult(string mpdPath, MPD mpdContent, FFmpegCommand ffmpegCommand, Mp4BoxCommand mp4boxCommand, MediaMetadata inputMetadata)
         {
             DashFileContent = mpdContent;
             DashFilePath = mpdPath;
             FFmpegCommand = ffmpegCommand;
+            MP4BoxCommand = mp4boxCommand;
             InputMetadata = inputMetadata;
         }
 
@@ -37,9 +39,14 @@ namespace DEnc
         public string DashFilePath { get; protected set; }
 
         /// <summary>
-        /// The result yielded from probing the input file.
+        /// The command used to encode the video.
         /// </summary>
         public FFmpegCommand FFmpegCommand { get; protected set; }
+
+        /// <summary>
+        /// The command used to generate the DASH manifest.
+        /// </summary>
+        public Mp4BoxCommand MP4BoxCommand { get; protected set; }
 
         /// <summary>
         /// The play duration of the media computed on the fly from <see cref="InputMetadata"/>.
