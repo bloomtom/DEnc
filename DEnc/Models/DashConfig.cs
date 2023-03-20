@@ -84,7 +84,7 @@ namespace DEnc.Models
         /// <summary>
         /// Framerate of the video, defaults to match the input framerate
         /// </summary>
-        public int Framerate { get; set; } = 0;
+        public decimal Framerate { get; set; } = 0;
 
         /// <summary>
         /// The Full or Relative path to the Input File
@@ -94,7 +94,7 @@ namespace DEnc.Models
         /// <summary>
         /// KeyframeInterval of the video, defaults to match the input keyframe interval
         /// </summary>
-        public int KeyframeInterval { get; set; } = 0;
+        public decimal KeyframeInterval { get; set; } = 0;
 
         /// <summary>
         /// The encoding options of the video. Defaults as <see cref="H264EncodeOptions"/>

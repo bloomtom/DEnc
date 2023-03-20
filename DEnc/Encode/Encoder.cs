@@ -124,7 +124,7 @@ namespace DEnc
         public static Mp4BoxCommand GenerateMp4BoxCommand(DashConfig config, IEnumerable<VideoStreamCommand> videoFiles, IEnumerable<AudioStreamCommand> audioFiles)
         {
             // Use a default key interval of 3s if a framerate or keyframe interval is not given.
-            int keyInterval = (config.KeyframeInterval == 0 || config.Framerate == 0) ? 3000 : (config.KeyframeInterval / config.Framerate * 1000);
+            int keyInterval = (int)Math.Round((config.KeyframeInterval == 0 || config.Framerate == 0) ? 3000 : ((config.KeyframeInterval / config.Framerate) * 1000));
             string mpdOutputPath = Path.Combine(config.OutputDirectory, config.OutputFileName) + ".mpd";
             var mp4boxCommand = Mp4BoxCommandBuilder.BuildMp4boxMpdCommand(
                 videoFiles: videoFiles,

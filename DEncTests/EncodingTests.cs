@@ -52,6 +52,32 @@ namespace DEncTests
         }
 
         [Fact]
+        public void GenerateDash_AltKeyframeInterval_ProducesCorrectDashEncodeResult()
+        {
+            Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath);
+            DashConfig config = new DashConfig(multiLanguageTestFileName, RunPath, Qualities, "output")
+            {
+                Framerate = 16,
+                KeyframeInterval = 32
+            };
+
+            encodeResult = encoder.GenerateDash(config, encoder.ProbeFile(config.InputFilePath, out _));
+            Assert.Contains("-dash 2000", encodeResult.MP4BoxCommand.RenderedCommand); // Interval should be KeyframeInterval / Framerate * 1000.
+
+            int streams = 0;
+            var scans = encodeResult.MediaFiles.Select((x) => encoder.ProbeFile(x, out _));
+            foreach (var outputStream in scans)
+            {
+                if (outputStream.VideoStreams.Count() < 1) { continue; }
+                foreach (var vStream in outputStream.VideoStreams)
+                {
+                    streams++;
+                }
+            }
+            Assert.True(streams == 1);
+        }
+
+        [Fact]
         public void GenerateDash_Downmixing_ProducesCorrectDashEncodeResult()
         {
             Encoder encoder = new Encoder(ffmpegPath, ffprobePath, mp4boxPath);

@@ -76,7 +76,7 @@ namespace DEnc.Commands
         /// Applies a parameter for the framerate if the given value is greater than zero.
         /// </summary>
         /// <param name="framerate">The framerate in frames per second.</param>
-        public FFmpegH264VideoCommandBuilder WithFramerate(int framerate)
+        public FFmpegH264VideoCommandBuilder WithFramerate(decimal framerate)
         {
             if (framerate <= 0)
             {
@@ -91,7 +91,7 @@ namespace DEnc.Commands
         /// </summary>
         /// <param name="keyframeInterval">The keyframe interval in frames. Generally this is 3x the framerate.</param>
         /// <param name="scenecut">Leave at zero to force a keyframe on every interval only. Higher values allow keyframes between intervals.</param>
-        public FFmpegH264VideoCommandBuilder WithKeyframeInteval(int keyframeInterval, int scenecut = 0)
+        public FFmpegH264VideoCommandBuilder WithKeyframeInteval(decimal keyframeInterval, int scenecut = 0)
         {
             if (keyframeInterval <= 0)
             {

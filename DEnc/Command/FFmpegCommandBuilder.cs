@@ -148,7 +148,7 @@ namespace DEnc.Commands
         /// <summary>
         /// Generates and appends commands for the given video streams to the internal command set.
         /// </summary>
-        public virtual FFmpegCommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, int framerate, int keyframeInterval, int defaultBitrate)
+        public virtual FFmpegCommandBuilder WithVideoCommands(IEnumerable<MediaStream> videoStreams, IEnumerable<IQuality> qualities, decimal framerate, decimal keyframeInterval, int defaultBitrate)
         {
             foreach (MediaStream video in videoStreams)
             {
