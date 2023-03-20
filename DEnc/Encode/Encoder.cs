@@ -170,6 +170,10 @@ namespace DEnc
                     throw new FFMpegFailedException(ffmpegCommand, log, $"ERROR: ffmpeg returned code {ffResult.ExitCode}. File: {config.InputFilePath}");
                 }
             }
+            catch (OperationCanceledException ex)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 try
@@ -474,6 +478,10 @@ namespace DEnc
                 {
                     throw new Mp4boxFailedException(originalFFmpegCommand, mp4boxCommand, log, $"MP4Box appeared to succeed, but no MPD file was created.");
                 }
+            }
+            catch(OperationCanceledException ex)
+            {
+                throw;
             }
             catch (Exception ex)
             {
